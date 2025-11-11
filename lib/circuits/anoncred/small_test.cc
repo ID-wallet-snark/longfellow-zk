@@ -61,7 +61,7 @@ std::unique_ptr<Circuit<Fp256Base>> make_circuit() {
   QuadCircuit<Fp256Base> Q(p256_base);
   const CompilerBackend cbk(&Q);
   const LogicCircuit LC(&cbk, p256_base);
-  Small small(LC, p256, n256_order);
+  Small ptr(LC, p256, n256_order);
 
   EltW pkX = LC.eltw_input(), pkY = LC.eltw_input(), htr = LC.eltw_input();
   typename Small::OpenedAttribute oa[kNumAttr];
@@ -76,10 +76,10 @@ std::unique_ptr<Circuit<Fp256Base>> make_circuit() {
 
   Q.private_input();
 
-  Small::Witness vwc;
+  typename Small::Witness vwc;
   vwc.input(LC);
 
-  small.assert_credential(pkX, pkY, htr, oa, now, vwc);
+  ptr.assert_credential(pkX, pkY, htr, oa, now, vwc);
 
   auto CIRCUIT = Q.mkcircuit(/*nc=*/1);
   dump_info("mdocsmall", Q);

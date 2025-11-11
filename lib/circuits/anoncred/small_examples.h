@@ -18,7 +18,7 @@
 #include <cstddef>
 #include <cstdint>
 
-#include "algebra/static_string.h"
+#include "../../algebra/static_string.h"
 
 namespace proofs {
 

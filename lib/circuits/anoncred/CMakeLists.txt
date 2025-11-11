@@ -15,3 +15,6 @@
 proofs_add_tests(small_test)
 
 target_link_libraries(small_test mdoc)
+
+proofs_add_test(ptrcred_age_over_18_test)
+target_link_libraries(ptrcred_age_over_18_test mdoc)

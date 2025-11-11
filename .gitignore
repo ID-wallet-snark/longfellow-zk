@@ -1,0 +1,87 @@
+# Build directories
+build/
+build-*/
+cmake-build-*/
+out/
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
+install_manifest.txt
+compile_commands.json
+*.cmake
+
+# Build artifacts
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+*.out
+*.app
+
+# Test executables and outputs
+*_test
+*_bench
+Testing/
+test_detail.xml
+
+# Generated binaries
+circuit_maker
+generate_test_vectors
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.bak
+
+# Clangd and language server cache
+.clangd/
+.cache/
+
+# Documentation build outputs
+docs/public/
+docs/resources/_gen/
+docs/.hugo_build.lock
+docs/node_modules/
+
+# Doxygen output
+docs/html/
+docs/latex/
+docs/xml/
+
+# Dependency managers
+vcpkg_installed/
+.vcpkg/
+
+# Core dumps and debug files
+core
+*.dSYM/
+vgcore.*
+
+# Benchmark results
+*.json
+
+# Temporary files
+*.tmp
+*.log
+*.pid
+*.seed
+
+# OS specific
+Thumbs.db
+Desktop.ini
+
+# Package managers
+node_modules/
+package-lock.json
+
+# Go modules (for Hugo docs)
+docs/go.sum

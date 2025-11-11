@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+cmake_minimum_required(VERSION 3.13)
+include(../../CMake/proofs.cmake)
+
 add_library(mdoc mdoc_zk.cc mdoc_decompress.cc mdoc_generate_circuit.cc
                  mdoc_circuit_id.cc zk_spec.cc)
 target_link_libraries(mdoc flatsha ec algebra util zstd)
