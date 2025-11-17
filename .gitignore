@@ -85,3 +85,6 @@ package-lock.json
 
 # Go modules (for Hugo docs)
 docs/go.sum
+
+# External GUI dependencies
+gui/imgui/
