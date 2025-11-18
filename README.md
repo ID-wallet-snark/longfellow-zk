@@ -45,9 +45,32 @@ $ yum install -y clang libzstd-devel openssl-devel git cmake google-benchmark-de
 
 
 ### MacOS
+
+#### Option 1: Using Nix (Recommended)
+If you're using Nix on macOS, all dependencies are already defined in `shell.nix`:
+
+```bash
+$ nix-shell
+```
+
+Then build from within the Nix shell:
+
+```bash
+$ CXX=clang++ cmake -D CMAKE_BUILD_TYPE=Release -S lib -B clang-build-release --install-prefix ${PWD}/install
+$ cd clang-build-release && make -j 16 && ctest -j 16
+```
+
+Or build in a single command:
+
+```bash
+$ nix-shell --run "CXX=clang++ cmake -D CMAKE_BUILD_TYPE=Release -S lib -B clang-build-release --install-prefix ${PWD}/install"
+$ nix-shell --run "cd clang-build-release && make -j 16 && ctest -j 16"
+```
+
+#### Option 2: Using Homebrew
 Ensure that Xcode command line tools such as `clang` and `cmake` are installed.
 
-```
+```bash
 $ brew install googletest google-benchmark zstd
 ```
 

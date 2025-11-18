@@ -2,6 +2,7 @@
 build/
 build-*/
 cmake-build-*/
+clang-build-*/
 out/
 
 # CMake generated files
