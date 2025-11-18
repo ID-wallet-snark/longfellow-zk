@@ -11,7 +11,10 @@ cmake_install.cmake
 CTestTestfile.cmake
 install_manifest.txt
 compile_commands.json
-*.cmake
+Makefile
+*_include.cmake
+!CMakeLists.txt
+!lib/CMake/*.cmake
 
 # Build artifacts
 *.o
@@ -22,6 +25,14 @@ compile_commands.json
 *.exe
 *.out
 *.app
+
+# GUI specific binaries
+gui/longfellow_gui
+gui/test_circuit
+gui/imgui.ini
+
+# Exported proofs
+gui/zkproof_*.json
 
 # Test executables and outputs
 *_test
@@ -86,5 +97,17 @@ package-lock.json
 # Go modules (for Hugo docs)
 docs/go.sum
 
-# External GUI dependencies
+# External GUI dependencies (git submodule)
 gui/imgui/
+
+# Library build artifacts
+lib/**/*.a
+lib/**/*.o
+lib/**/CMakeCache.txt
+lib/**/CMakeFiles/
+lib/**/Makefile
+lib/**/cmake_install.cmake
+lib/**/*_test
+!lib/CMakeLists.txt
+!lib/*/CMakeLists.txt
+!lib/*/*/CMakeLists.txt
