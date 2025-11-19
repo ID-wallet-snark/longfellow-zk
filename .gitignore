@@ -68,6 +68,7 @@ docs/node_modules/
 docs/html/
 docs/latex/
 docs/xml/
+docs/static/reference/cpp/
 
 # Dependency managers
 vcpkg_installed/
