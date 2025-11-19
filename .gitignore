@@ -109,3 +109,8 @@ lib/**/*_test
 !lib/CMakeLists.txt
 !lib/*/CMakeLists.txt
 !lib/*/*/CMakeLists.txt
+
+# GEMINI
+GEMINI.md
+
+*.ini
