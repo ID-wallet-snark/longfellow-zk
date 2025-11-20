@@ -44,6 +44,11 @@ target_link_libraries(mdoc_zk_test mdoc_static)
 proofs_add_testing_libraries(mdoc_zk_test)
 target_link_libraries(mdoc_zk_test crypto zstd)
 
+add_executable(french_license_test french_license_test.cc)
+target_link_libraries(french_license_test mdoc_static)
+proofs_add_testing_libraries(french_license_test)
+target_link_libraries(french_license_test crypto zstd)
+
 set(installable_libs mdoc_static)
 install(TARGETS ${installable_libs} DESTINATION lib)
 install(FILES mdoc_zk.h DESTINATION include)
