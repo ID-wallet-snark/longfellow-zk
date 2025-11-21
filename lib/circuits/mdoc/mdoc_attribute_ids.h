@@ -32,7 +32,7 @@ constexpr const char* kISO23220Namespace = "org.iso.23220.1";
 constexpr const char* kISO23220PhotoIDNamespace =
     "org.iso.23220.photoID.1";
 constexpr const char* kISO23220DTCNamespace = "org.iso.23220.dtc.1";
-constexpr const char* kFRANTSMDL1Namespace = "fr.gouv.ants.mdl.1"
+constexpr const char* kFRANTSMDL1Namespace = "fr.gouv.ants.mdl.1";
 
 constexpr const char* kSupportedNamespaces[] = {
     kMDLNamespace,        kAAMVANamespace,    kEUAVNamespace,
@@ -41,6 +41,7 @@ constexpr const char* kSupportedNamespaces[] = {
 
 constexpr const char* kIDPassDocType = "com.google.wallet.idcard.1";
 constexpr const char* kMDLDocType = "org.iso.18013.5.1.mDL";
+constexpr const char* kFRDocType = "fr.gouv.ants.mdl.1.permis";
 constexpr const char* kEUAVDocType = "eu.europa.ec.av.1";
 constexpr const char* kEUDIPIDDocType = "eu.europa.ec.eudi.pid.1";
 constexpr const char* kISO23220PhotoIDDocType = "org.iso.23220.photoID.1";
@@ -262,6 +263,29 @@ constexpr MdocAttribute kMdocAttributes[] = {
     {"age_over_65", kEUAVNamespace},
     {"age_over_67", kEUAVNamespace},
     {"portrait", kEUAVNamespace},
+
+    // French Driver's License
+    {"family_name", kFRANTSMDL1Namespace},
+    {"given_name", kFRANTSMDL1Namespace},
+    {"birth_date", kFRANTSMDL1Namespace},
+    {"issue_date", kFRANTSMDL1Namespace},
+    {"expiry_date", kFRANTSMDL1Namespace},
+    {"driving_privileges", kFRANTSMDL1Namespace},
+    {"category_AM_expiry", kFRANTSMDL1Namespace},
+    {"category_A1_expiry", kFRANTSMDL1Namespace},
+    {"category_A2_expiry", kFRANTSMDL1Namespace},
+    {"category_A_expiry", kFRANTSMDL1Namespace},
+    {"category_B_expiry", kFRANTSMDL1Namespace},
+    {"category_B1_expiry", kFRANTSMDL1Namespace},
+    {"category_C1_expiry", kFRANTSMDL1Namespace},
+    {"category_C_expiry", kFRANTSMDL1Namespace},
+    {"category_D1_expiry", kFRANTSMDL1Namespace},
+    {"category_D_expiry", kFRANTSMDL1Namespace},
+    {"category_BE_expiry", kFRANTSMDL1Namespace},
+    {"category_C1E_expiry", kFRANTSMDL1Namespace},
+    {"category_CE_expiry", kFRANTSMDL1Namespace},
+    {"category_D1E_expiry", kFRANTSMDL1Namespace},
+    {"category_DE_expiry", kFRANTSMDL1Namespace},
 };
 
 }  // namespace proofs
