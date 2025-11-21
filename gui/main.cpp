@@ -51,6 +51,12 @@ struct AppState {
   bool prove_age = true;
   bool prove_nationality = false;
   bool prove_french_license = false;
+  
+  // License Categories
+  bool prove_category_A = false;
+  bool prove_category_B = true;
+  bool prove_category_C = false;
+
   int age_threshold = 18;
 
   // Calculated age based on birth date
@@ -223,6 +229,9 @@ void GenerateZKProofAsync(AppState &state) {
   bool prove_age = state.prove_age;
   bool prove_nationality = state.prove_nationality;
   bool prove_french_license = state.prove_french_license;
+  bool prove_category_A = state.prove_category_A;
+  bool prove_category_B = state.prove_category_B;
+  bool prove_category_C = state.prove_category_C;
   int age_threshold = state.age_threshold;
   std::string nationality = state.nationality;
 
@@ -231,6 +240,9 @@ void GenerateZKProofAsync(AppState &state) {
                                                           birth_day, prove_age,
                                                           prove_nationality,
                                                           prove_french_license,
+                                                          prove_category_A,
+                                                          prove_category_B,
+                                                          prove_category_C,
                                                           age_threshold,
                                                           nationality]() {
     LogMessage(state, "[PROVER] Starting REAL ZK proof generation (Async)...");
@@ -269,8 +281,19 @@ void GenerateZKProofAsync(AppState &state) {
         mdoc_index = 3; // Use mdoc with issue_date and height
         attributes.push_back(proofs::test::issue_date_2024_03_15);
         LogMessage(state, "  ✓ Attribute: issue_date (Validity Check)");
-        attributes.push_back(proofs::test::height_175);
-        LogMessage(state, "  ✓ Attribute: height (License Type Proxy)");
+        
+        if (prove_category_B) {
+            attributes.push_back(proofs::test::category_B_proxy);
+            LogMessage(state, "  ✓ Attribute: category_B (via height proxy)");
+        }
+        if (prove_category_A) {
+            attributes.push_back(proofs::test::driving_privileges_A);
+            LogMessage(state, "  ✓ Attribute: category_A (driving_privileges)");
+        }
+        if (prove_category_C) {
+            attributes.push_back(proofs::test::driving_privileges_C);
+            LogMessage(state, "  ✓ Attribute: category_C (driving_privileges)");
+        }
       } else {
         // For Age/Nationality, use mdoc_tests[0] (Valid > 18)
         // We only proceed here if the LOCAL check passed, ensuring consistency.
@@ -417,7 +440,9 @@ void GenerateZKProofAsync(AppState &state) {
         state.proof_data.attributes_proven.clear();
         if (prove_french_license) {
           state.proof_data.attributes_proven.push_back("French License Valid");
-          state.proof_data.attributes_proven.push_back("Type B Confirmed");
+          if (prove_category_B) state.proof_data.attributes_proven.push_back("Category B");
+          if (prove_category_A) state.proof_data.attributes_proven.push_back("Category A");
+          if (prove_category_C) state.proof_data.attributes_proven.push_back("Category C");
         } else {
           if (prove_age)
             state.proof_data.attributes_proven.push_back(
@@ -642,14 +667,18 @@ void RenderMainWindow(AppState &state) {
         ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "1. Validity Check");
         ImGui::SameLine();
         ImGui::TextDisabled("(Issue Date)");
-
-        ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "2. License Type");
-        ImGui::SameLine();
-        ImGui::TextDisabled("(Permis B / Category B)");
+        
+        ImGui::Spacing();
+        ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "2. License Categories");
+        
+        ImGui::Checkbox("Category A (Motorcycle)", &state.prove_category_A);
+        ImGui::Checkbox("Category B (Car)", &state.prove_category_B);
+        if (ImGui::IsItemHovered())
+            ImGui::SetTooltip("Uses 'height' as a proxy for demo purposes.");
+        ImGui::Checkbox("Category C (Truck)", &state.prove_category_C);
 
         ImGui::Spacing();
-        ImGui::TextDisabled("Note: This demo uses 'height' as a proxy for "
-                            "'driving_privileges'.");
+        ImGui::TextDisabled("Note: Only Category B is supported by the current mdoc (via proxy).");
         ImGui::Unindent(20);
       }
       ImGui::PopStyleColor();

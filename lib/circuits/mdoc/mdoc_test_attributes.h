@@ -142,6 +142,52 @@ static const RequestedAttribute aamva_dhs_compliance = {
     .id_len = 14,
     .cbor_value_len = 2};
 
+static const RequestedAttribute driving_privileges_A = {
+    .namespace_id = {'o', 'r', 'g', '.', 'i', 's', 'o', '.', '1', '8', '0', '1',
+                     '3', '.', '5', '.', '1'},
+    .id = {'d', 'r', 'i', 'v', 'i', 'n', 'g', '_', 'p', 'r', 'i', 'v', 'i', 'l',
+           'e', 'g', 'e', 's'},
+    .cbor_value = {0x81, 0xa1, 0x75, 'v', 'e', 'h', 'i', 'c', 'l', 'e', '_',
+                   'c', 'a', 't', 'e', 'g', 'o', 'r', 'y', '_', 'c', 'o', 'd',
+                   'e', 0x61, 'A'},
+    .namespace_len = 17,
+    .id_len = 18,
+    .cbor_value_len = 26};
+
+static const RequestedAttribute driving_privileges_B = {
+    .namespace_id = {'o', 'r', 'g', '.', 'i', 's', 'o', '.', '1', '8', '0', '1',
+                     '3', '.', '5', '.', '1'},
+    .id = {'d', 'r', 'i', 'v', 'i', 'n', 'g', '_', 'p', 'r', 'i', 'v', 'i', 'l',
+           'e', 'g', 'e', 's'},
+    .cbor_value = {0x81, 0xa1, 0x75, 'v', 'e', 'h', 'i', 'c', 'l', 'e', '_',
+                   'c', 'a', 't', 'e', 'g', 'o', 'r', 'y', '_', 'c', 'o', 'd',
+                   'e', 0x61, 'B'},
+    .namespace_len = 17,
+    .id_len = 18,
+    .cbor_value_len = 26};
+
+static const RequestedAttribute driving_privileges_C = {
+    .namespace_id = {'o', 'r', 'g', '.', 'i', 's', 'o', '.', '1', '8', '0', '1',
+                     '3', '.', '5', '.', '1'},
+    .id = {'d', 'r', 'i', 'v', 'i', 'n', 'g', '_', 'p', 'r', 'i', 'v', 'i', 'l',
+           'e', 'g', 'e', 's'},
+    .cbor_value = {0x81, 0xa1, 0x75, 'v', 'e', 'h', 'i', 'c', 'l', 'e', '_',
+                   'c', 'a', 't', 'e', 'g', 'o', 'r', 'y', '_', 'c', 'o', 'd',
+                   'e', 0x61, 'C'},
+    .namespace_len = 17,
+    .id_len = 18,
+    .cbor_value_len = 26};
+
+// Proxy for Category B using height (since we can't sign new attributes)
+static const RequestedAttribute category_B_proxy = {
+    .namespace_id = {'o', 'r', 'g', '.', 'i', 's', 'o', '.', '1', '8', '0', '1',
+                     '3', '.', '5', '.', '1'},
+    .id = {'h', 'e', 'i', 'g', 'h', 't'},
+    .cbor_value = {0x18, 0xaf},
+    .namespace_len = 17,
+    .id_len = 6,
+    .cbor_value_len = 2};
+
 }  // namespace test
 }  // namespace proofs
 
