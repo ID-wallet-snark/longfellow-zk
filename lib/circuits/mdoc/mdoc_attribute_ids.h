@@ -32,11 +32,12 @@ constexpr const char* kISO23220Namespace = "org.iso.23220.1";
 constexpr const char* kISO23220PhotoIDNamespace =
     "org.iso.23220.photoID.1";
 constexpr const char* kISO23220DTCNamespace = "org.iso.23220.dtc.1";
+constexpr const char* kFRANTSMDL1Namespace = "fr.gouv.ants.mdl.1"
 
 constexpr const char* kSupportedNamespaces[] = {
     kMDLNamespace,        kAAMVANamespace,    kEUAVNamespace,
     kEUDIPIDNamespace,    kISO23220Namespace, kISO23220PhotoIDNamespace,
-    kISO23220DTCNamespace};
+    kISO23220DTCNamespace, kFRANTSMDL1Namespace};
 
 constexpr const char* kIDPassDocType = "com.google.wallet.idcard.1";
 constexpr const char* kMDLDocType = "org.iso.18013.5.1.mDL";
