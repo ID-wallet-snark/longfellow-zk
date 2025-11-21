@@ -47,4 +47,3 @@ macro(proofs_add_tests)
         proofs_add_test(${PROG})
     endforeach ()
 endmacro()
-
