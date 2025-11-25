@@ -16,6 +16,8 @@ Makefile
 *_include.cmake
 !CMakeLists.txt
 !lib/CMake/*.cmake
+*.cmake
+
 
 # Build artifacts
 *.o
