@@ -230,9 +230,16 @@ Executable: build/gui/longfellow_gui (1.9 MB)
 
 ## 🚨 Points d'Attention
 
-### UI Freeze (Normal)
-La génération de circuits cryptographiques prend 30-60 secondes et fait freezer l'UI. 
-**C'est un comportement normal** car l'opération est synchrone et CPU-intensive.
+### UI Responsiveness
+The proof generation runs asynchronously on a background thread. The UI remains responsive and displays a spinner/loading indicator during the process (30-60s).
+
+### 3. Health Pass (Issuer Verification)
+- ✅ **Production Grade UI:** Verification of the Issuing Authority (e.g., Ministry of Health).
+- ✅ **Real ZK Logic:** Proves the document was signed by the selected country (Root of Trust).
+- ✅ **Mapping:**
+  - **France** -> Target "FRA" (Valid in test mDoc).
+  - **USA** -> Target "USA" (Invalid in test mDoc).
+- ✅ **Trust Model:** Instead of verifying specific medical products (which changes often), we verify the **trustworthiness of the issuer**, a standard EUDI Wallet pattern.
 
 ### Utilisation de mdoc de test
 Le GUI utilise `mdoc_tests[0]` pour la démonstration. En production, il faudrait:

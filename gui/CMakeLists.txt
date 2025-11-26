@@ -28,6 +28,7 @@ set(IMGUI_SOURCES
 # Create GUI executable
 add_executable(longfellow_gui
   main.cpp
+  zk_workflow.cpp
   ${IMGUI_SOURCES}
 )
 

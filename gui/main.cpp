@@ -17,34 +17,13 @@
 #include <thread>
 #include <vector>
 
-// Intégration Longfellow ZK
-#include "algebra/fp.h"
-#include "circuits/mdoc/mdoc_examples.h"
-#include "circuits/mdoc/mdoc_test_attributes.h"
-#include "circuits/mdoc/mdoc_witness.h"
-#include "circuits/mdoc/mdoc_zk.h"
-#include "ec/p256.h"
+// Intégration Longfellow ZK Logic
+#include "zk_workflow.h"
 #include "util/log.h"
 
 // -----------------------------------------------------------------------------
-// Data Structures
+// Data Structures (UI Specific)
 // -----------------------------------------------------------------------------
-
-struct ProofData {
-  std::vector<uint8_t> zkproof;
-  bool is_valid = false;
-  std::string proof_hash;
-  std::vector<std::string> attributes_proven;
-  time_t timestamp = 0;
-  size_t circuit_size = 0;
-  // Stocker le circuit pour la vérification
-  std::vector<uint8_t> circuit_data;
-  size_t circuit_len = 0;
-  // Stocker les attributs utilisés
-  std::vector<RequestedAttribute> attributes;
-  // Index of the mock mdoc used (0 for Age, 3 for French License)
-  int mdoc_test_index = 0;
-};
 
 struct AppState {
   // User input
@@ -60,6 +39,8 @@ struct AppState {
   
   // Health Pass / Issuer Settings
   bool prove_health_issuer = false;
+  bool prove_vaccine = false;
+  bool prove_insurance = false;
   int selected_issuer = 0; // 0: France, 1: USA, 2: Germany
   bool eu_vaccines_compliant = true;
   bool simulate_scan = false;
@@ -90,11 +71,13 @@ struct AppState {
   ImVec4 accent_color = ImVec4(0.2f, 0.6f, 1.0f, 1.0f);
 
   // Circuit cache (pour éviter de régénérer à chaque fois)
+  // Note: The internal structure is hidden in zk_workflow.cpp, here we just hold byte buffers or similar if we wanted strict separation
+  // but for now we keep the definition compatible with what logic expects (void* casting)
   struct CircuitCache {
     std::vector<uint8_t> circuit_data;
     size_t circuit_len = 0;
     size_t num_attributes = 0;
-    const ZkSpecStruct *zk_spec = nullptr;
+    const void *zk_spec = nullptr;
   };
   CircuitCache circuit_cache_1attr;
   CircuitCache circuit_cache_2attr;
@@ -222,483 +205,83 @@ void LogMessage(AppState &state, const std::string &msg) {
 }
 
 // -----------------------------------------------------------------------------
-// Core ZK Logic (Unchanged)
+// Async ZK Wrapper
 // -----------------------------------------------------------------------------
 
-// Fonction pour exporter une preuve en JSON
-bool ExportProof(AppState &state, const std::string &filename) {
-  std::lock_guard<std::recursive_mutex> lock(state.mutex);
-  if (!state.proof_data.is_valid) {
-    return false;
-  }
-
-  std::ofstream file(filename);
-  if (!file.is_open()) {
-    return false;
-  }
-
-  file << "{\n";
-  file << "  \"version\": \"1.0\",\n";
-  file << "  \"timestamp\": " << state.proof_data.timestamp << ",\n";
-  file << "  \"proof_hash\": \"" << state.proof_data.proof_hash << "\",\n";
-  file << "  \"circuit_size\": " << state.proof_data.circuit_size << ",\n";
-  file << "  \"attributes\": [\n";
-
-  for (size_t i = 0; i < state.proof_data.attributes_proven.size(); ++i) {
-    file << "    \"" << state.proof_data.attributes_proven[i] << "\"";
-    if (i < state.proof_data.attributes_proven.size() - 1) {
-      file << ",";
-    }
-    file << "\n";
-  }
-
-  file << "  ],\n";
-  file << "  \"proof_data\": \"";
-
-  // Encoder la preuve en hexadécimal
-  for (size_t i = 0; i < state.proof_data.zkproof.size(); ++i) {
-    file << std::hex << std::setw(2) << std::setfill('0')
-         << static_cast<int>(state.proof_data.zkproof[i]);
-  }
-
-  file << "\",\n";
-  file << "  \"settings\": {\n";
-  file << "    \"age_threshold\": " << state.age_threshold << ",\n";
-  file << "    \"prove_age\": " << (state.prove_age ? "true" : "false")
-       << ",\n";
-  file << "    \"prove_nationality\": "
-       << (state.prove_nationality ? "true" : "false") << ",\n";
-  
-  std::string nat_code = "FRA"; // Default
-  if (state.selected_nationality == 1) nat_code = "USA";
-  else if (state.selected_nationality == 2) nat_code = "DEU";
-  else if (state.selected_nationality == 3) nat_code = "GBR";
-  else if (state.selected_nationality == 4) nat_code = "ESP";
-
-  file << "    \"nationality\": \"" << nat_code << "\"\n";
-  file << "  }\n";
-  file << "}\n";
-
-  file.close();
-  return true;
-}
-
-// Fonction pour créer un RequestedAttribute pour l'âge
-RequestedAttribute CreateAgeAttribute(int age_threshold) {
-  RequestedAttribute attr;
-
-  // Namespace: org.iso.18013.5.1
-  const char *ns = "org.iso.18013.5.1";
-  size_t ns_len = strlen(ns);
-  memcpy(attr.namespace_id, ns, ns_len);
-  attr.namespace_len = ns_len;
-
-  // ID: age_over_18 (adaptable selon le threshold)
-  std::string id = "age_over_" + std::to_string(age_threshold);
-  memcpy(attr.id, id.c_str(), id.length());
-  attr.id_len = id.length();
-
-  // CBOR value: true (0xf5)
-  attr.cbor_value[0] = 0xf5;
-  attr.cbor_value_len = 1;
-
-  return attr;
-}
-
-// Fonction pour créer un RequestedAttribute pour la nationalité
-RequestedAttribute CreateNationalityAttribute(const char *nationality) {
-  RequestedAttribute attr;
-
-  // Namespace: org.iso.18013.5.1
-  const char *ns = "org.iso.18013.5.1";
-  size_t ns_len = strlen(ns);
-  memcpy(attr.namespace_id, ns, ns_len);
-  attr.namespace_len = ns_len;
-
-  // ID: nationality
-  const char *id = "nationality";
-  memcpy(attr.id, id, strlen(id));
-  attr.id_len = strlen(id);
-
-  // CBOR value: text string for nationality (e.g., "FRA")
-  // Format: 0x63 (text(3)) + "FRA"
-  attr.cbor_value[0] = 0x60 + strlen(nationality); // CBOR text header
-  memcpy(attr.cbor_value + 1, nationality, strlen(nationality));
-  attr.cbor_value_len = 1 + strlen(nationality);
-
-  return attr;
-}
-
-// Fonction pour créer un RequestedAttribute pour l'Emetteur (Issuer)
-// Utilise le champ "nationality" comme proxy pour la démonstration
-RequestedAttribute CreateIssuerAttribute(const char *issuer_code) {
-  // For this demo, verifying the Issuer is cryptographically identical 
-  // to verifying the Nationality field of the signer.
-  // Real implementation would check "issuing_country" or similar.
-  return CreateNationalityAttribute(issuer_code);
-}
-
-// Calculer l'âge actuel à partir de la date de naissance
-int CalculateAge(int birth_year, int birth_month, int birth_day) {
-  time_t now_time = time(nullptr);
-  struct tm *now = localtime(&now_time);
-
-  int current_year = now->tm_year + 1900;
-  int current_month = now->tm_mon + 1;
-  int current_day = now->tm_mday;
-
-  int age = current_year - birth_year;
-
-  // Ajuster si l'anniversaire n'est pas encore passé cette année
-  if (current_month < birth_month ||
-      (current_month == birth_month && current_day < birth_day)) {
-    age--;
-  }
-
-  return age;
-}
-
-// VRAIE génération de preuve ZK avec Longfellow - appelle run_mdoc_prover
 void GenerateZKProofAsync(AppState &state) {
   state.is_generating = true;
   state.status_message = "Generating proof... (This may take 30-60s)";
 
-  // Capture necessary state by value to avoid race conditions
-  int birth_year = state.birth_year;
-  int birth_month = state.birth_month;
-  int birth_day = state.birth_day;
-  bool prove_age = state.prove_age;
-  bool prove_nationality = state.prove_nationality;
-  bool prove_french_license = state.prove_french_license;
-  bool prove_health_issuer = state.prove_health_issuer;
-  int selected_issuer = state.selected_issuer;
-  bool eu_vaccines_compliant = state.eu_vaccines_compliant;
-  bool prove_category_A = state.prove_category_A;
-  bool prove_category_B = state.prove_category_B;
-  bool prove_category_C = state.prove_category_C;
-  int age_threshold = state.age_threshold;
-  int selected_nationality = state.selected_nationality;
+  // Create config copy
+  ProverConfig config;
+  config.birth_year = state.birth_year;
+  config.birth_month = state.birth_month;
+  config.birth_day = state.birth_day;
+  config.prove_age = state.prove_age;
+  config.prove_nationality = state.prove_nationality;
+  config.prove_french_license = state.prove_french_license;
+  config.prove_health_issuer = state.prove_health_issuer;
+  config.prove_vaccine = state.prove_vaccine;
+  config.prove_insurance = state.prove_insurance;
+  config.selected_issuer = state.selected_issuer;
+  config.eu_vaccines_compliant = state.eu_vaccines_compliant;
+  config.prove_category_A = state.prove_category_A;
+  config.prove_category_B = state.prove_category_B;
+  config.prove_category_C = state.prove_category_C;
+  config.age_threshold = state.age_threshold;
+  config.selected_nationality = state.selected_nationality;
+  config.circuit_cache_1attr = &state.circuit_cache_1attr;
+  config.circuit_cache_2attr = &state.circuit_cache_2attr;
 
-  state.generation_task = std::async(std::launch::async, [&state, birth_year,
-                                                          birth_month,
-                                                          birth_day, prove_age,
-                                                          prove_nationality,
-                                                          prove_french_license,
-                                                          prove_health_issuer,
-                                                          selected_issuer,
-                                                          eu_vaccines_compliant,
-                                                          prove_category_A,
-                                                          prove_category_B,
-                                                          prove_category_C,
-                                                          age_threshold,
-                                                          selected_nationality]() {
-    LogMessage(state, "[PROVER] Starting REAL ZK proof generation (Async)...");
+  state.generation_task = std::async(std::launch::async, [&state, config]() {
+    ProofData result_proof;
+    std::string log_buffer;
+    int age_out = 0;
 
-    // Calculer l'âge actuel
-    int calculated_age = CalculateAge(birth_year, birth_month, birth_day);
+    bool success = PerformZKProofGeneration(config, result_proof, log_buffer, age_out);
+
     {
       std::lock_guard<std::recursive_mutex> lock(state.mutex);
-      state.calculated_age = calculated_age;
-    }
-    LogMessage(state, "[AGE] Calculated age from input: " +
-                          std::to_string(calculated_age) + " years");
+      // Merge log
+      state.log += log_buffer;
+      state.calculated_age = age_out;
 
-    // DYNAMIC LOGIC: Check age locally before running the heavy circuit
-    if (prove_age && calculated_age < age_threshold) {
-      LogMessage(state,
-                 "  [BLOCKED] User is " + std::to_string(calculated_age) +
-                     ", but threshold is " + std::to_string(age_threshold));
-      LogMessage(
-          state,
-          "  [BLOCKED] Proof generation aborted to prevent false claim.");
-      {
-        std::lock_guard<std::recursive_mutex> lock(state.mutex);
-        state.status_message = "❌ Verification Failed: User is under " +
-                               std::to_string(age_threshold);
-        state.is_generating = false;
-      }
-      return;
-    }
-
-    try {
-      std::vector<RequestedAttribute> attributes;
-      int mdoc_index = 0;
-
-      if (prove_french_license) {
-        mdoc_index = 3; // Use mdoc with issue_date and height
-        attributes.push_back(proofs::test::issue_date_2024_03_15);
-        LogMessage(state, "  ✓ Attribute: issue_date (Validity Check)");
-        
-        if (prove_category_B) {
-            attributes.push_back(proofs::test::category_B_proxy);
-            LogMessage(state, "  ✓ Attribute: category_B (via height proxy)");
-        }
-        if (prove_category_A) {
-            attributes.push_back(proofs::test::driving_privileges_A);
-            LogMessage(state, "  ✓ Attribute: category_A (driving_privileges)");
-        }
-        if (prove_category_C) {
-            attributes.push_back(proofs::test::driving_privileges_C);
-            LogMessage(state, "  ✓ Attribute: category_C (driving_privileges)");
-        }
-      } else if (prove_health_issuer) {
-         // REAL ZK IMPLEMENTATION: ISSUER VERIFICATION
-         // -------------------------------------------
-         // We verify the Authority that signed the document (Root of Trust).
-         // In our test vector, the Issuer Country is stored in the 'nationality' field ("FRA").
-         // We demand a ZK proof that the underlying document contains the selected Country Code.
-         
-         mdoc_index = 0; // This signed document is issued by "FRA"
-         
-         std::string target_issuer = "";
-         if (selected_issuer == 0) target_issuer = "FRA"; // France
-         else if (selected_issuer == 1) target_issuer = "USA"; // USA
-         else if (selected_issuer == 2) target_issuer = "DEU"; // Germany
-         else target_issuer = "INVALID";
-
-         LogMessage(state, "  • Initiating ZK Constraint: IssuerCountry == " + target_issuer);
-         
-         // Using CreateIssuerAttribute (wraps nationality field) to prove origin.
-         attributes.push_back(CreateIssuerAttribute(target_issuer.c_str()));
+      if (success) {
+          state.proof_data = result_proof;
+          state.status_message = "✓ Proof generated successfully";
       } else {
-        // Standard Identity (Tab 1)
-        mdoc_index = 0; // mdoc[0] has nationality "FRA"
-        if (prove_age) {
-          attributes.push_back(CreateAgeAttribute(age_threshold));
-          LogMessage(state, "  ✓ Attribute: age_over_" +
-                                std::to_string(age_threshold));
-        }
-        if (prove_nationality) {
-          // Map integer selection to Country Code
-          std::string target_nat = "";
-          if (selected_nationality == 0) target_nat = "FRA";
-          else if (selected_nationality == 1) target_nat = "USA";
-          else if (selected_nationality == 2) target_nat = "DEU";
-          else if (selected_nationality == 3) target_nat = "GBR";
-          else if (selected_nationality == 4) target_nat = "ESP";
-          else target_nat = "UNK";
-
-          attributes.push_back(CreateNationalityAttribute(target_nat.c_str()));
-          LogMessage(state, "  ✓ Attribute: nationality = " + target_nat);
-        }
+          state.status_message = "❌ Verification Failed or Error";
       }
-
-      if (attributes.empty()) {
-        LogMessage(state, "  ✗ No attributes selected");
-        state.is_generating = false;
-        return;
-      }
-
-      // Récupération du ZkSpec
-      const ZkSpecStruct *zk_spec = nullptr;
-      for (int i = 0; i < kNumZkSpecs; ++i) {
-        if (kZkSpecs[i].num_attributes == attributes.size()) {
-          zk_spec = &kZkSpecs[i];
-          break;
-        }
-      }
-
-      if (!zk_spec) {
-        LogMessage(state, "  ✗ No ZK spec found");
-        state.is_generating = false;
-        return;
-      }
-
-      // Vérifier cache
-      std::vector<uint8_t> circuit_data_vec;
-      size_t circuit_len = 0;
-      bool circuit_from_cache = false;
-
-      // Access cache safely
-      {
-        std::lock_guard<std::recursive_mutex> lock(state.mutex);
-        AppState::CircuitCache *cache = nullptr;
-        if (attributes.size() == 1)
-          cache = &state.circuit_cache_1attr;
-        else if (attributes.size() == 2)
-          cache = &state.circuit_cache_2attr;
-
-        if (cache && !cache->circuit_data.empty() &&
-            cache->num_attributes == attributes.size() &&
-            cache->zk_spec == zk_spec) {
-          circuit_data_vec = cache->circuit_data;
-          circuit_len = cache->circuit_len;
-          circuit_from_cache = true;
-          LogMessage(state, "  ✓ Using CACHED circuit");
-        }
-      }
-
-      if (!circuit_from_cache) {
-        LogMessage(state, "  • Generating circuit (CPU Intensive, 30-60s)...");
-        // Note: This step is blocking on the worker thread and uses high CPU
-        uint8_t *raw_circuit_data = nullptr;
-        CircuitGenerationErrorCode ret =
-            generate_circuit(zk_spec, &raw_circuit_data, &circuit_len);
-
-        if (ret != CIRCUIT_GENERATION_SUCCESS || !raw_circuit_data) {
-          LogMessage(state, "  ✗ Circuit generation failed");
-          if (raw_circuit_data)
-            free(raw_circuit_data);
-          state.is_generating = false;
-          return;
-        }
-
-        // Copy to vector and free raw pointer immediately
-        circuit_data_vec.assign(raw_circuit_data,
-                                raw_circuit_data + circuit_len);
-        free(raw_circuit_data);
-
-        // Update cache
-        {
-          std::lock_guard<std::recursive_mutex> lock(state.mutex);
-          AppState::CircuitCache *cache = nullptr;
-          if (attributes.size() == 1)
-            cache = &state.circuit_cache_1attr;
-          else if (attributes.size() == 2)
-            cache = &state.circuit_cache_2attr;
-
-          if (cache) {
-            cache->circuit_data = circuit_data_vec;
-            cache->circuit_len = circuit_len;
-            cache->num_attributes = attributes.size();
-            cache->zk_spec = zk_spec;
-            LogMessage(state, "  ✓ Circuit cached");
-          }
-        }
-      }
-
-      // Prepare Prover
-      const proofs::MdocTests *test = &proofs::mdoc_tests[mdoc_index];
-
-      LogMessage(state, "  • Calling run_mdoc_prover...");
-      uint8_t *zkproof = nullptr;
-      size_t proof_len = 0;
-
-      MdocProverErrorCode prover_ret = run_mdoc_prover(
-          circuit_data_vec.data(), circuit_len, test->mdoc, test->mdoc_size,
-          test->pkx.as_pointer, test->pky.as_pointer, test->transcript,
-          test->transcript_size, attributes.data(), attributes.size(),
-          (const char *)test->now, &zkproof, &proof_len, zk_spec);
-
-      if (prover_ret != MDOC_PROVER_SUCCESS) {
-        LogMessage(state,
-                   "  [ERROR] Prover failed: " + std::to_string(prover_ret));
-        if (zkproof)
-          free(zkproof);
-        state.is_generating = false;
-        return;
-      }
-
-      LogMessage(state, "  [SUCCESS] Proof generated: " +
-                            std::to_string(proof_len) + " bytes");
-
-      // Update Proof Data safely
-      {
-        std::lock_guard<std::recursive_mutex> lock(state.mutex);
-        state.proof_data.zkproof.assign(zkproof, zkproof + proof_len);
-        state.proof_data.is_valid = true;
-        state.proof_data.timestamp = time(nullptr);
-        state.proof_data.circuit_size = circuit_len;
-        state.proof_data.circuit_data = circuit_data_vec; // Copy vector
-        state.proof_data.circuit_len = circuit_len;
-        state.proof_data.attributes = attributes;
-        state.proof_data.mdoc_test_index = mdoc_index;
-
-        // Hash
-        size_t hash_val = 0;
-        for (size_t i = 0; i < std::min(proof_len, size_t(32)); ++i) {
-          hash_val ^= (zkproof[i] << (i % 8));
-        }
-        state.proof_data.proof_hash = "0x" + std::to_string(hash_val);
-
-        state.proof_data.attributes_proven.clear();
-        if (prove_french_license) {
-          state.proof_data.attributes_proven.push_back("French License Valid");
-          if (prove_category_B) state.proof_data.attributes_proven.push_back("Category B");
-          if (prove_category_A) state.proof_data.attributes_proven.push_back("Category A");
-          if (prove_category_C) state.proof_data.attributes_proven.push_back("Category C");
-        } else if (prove_health_issuer) {
-           state.proof_data.attributes_proven.push_back("Issuer Verified");
-           std::string iss = (selected_issuer == 0) ? "FRA" : ((selected_issuer == 1) ? "USA" : "DEU");
-           state.proof_data.attributes_proven.push_back("Authority: " + iss);
-        } else {
-          if (prove_age)
-            state.proof_data.attributes_proven.push_back(
-                "age_over_" + std::to_string(age_threshold));
-          if (prove_nationality) {
-             std::string nat_str = "FRA";
-             if (selected_nationality == 1) nat_str = "USA";
-             else if (selected_nationality == 2) nat_str = "DEU";
-             else if (selected_nationality == 3) nat_str = "GBR";
-             else if (selected_nationality == 4) nat_str = "ESP";
-             state.proof_data.attributes_proven.push_back("nationality_" + nat_str);
-          }
-        }
-
-        state.status_message = "✓ Proof generated successfully";
-      }
-
-      free(zkproof);
-
-    } catch (const std::exception &e) {
-      LogMessage(state, "  [ERROR] Exception: " + std::string(e.what()));
       state.is_generating = false;
     }
-
-    state.is_generating = false;
   });
 }
 
 // VRAIE vérification de preuve ZK - appelle run_mdoc_verifier
 bool VerifyZKProof(AppState &state) {
   std::lock_guard<std::recursive_mutex> lock(state.mutex);
-  if (!state.proof_data.is_valid) {
-    LogMessage(state, "[ERROR] No valid proof to verify");
-    return false;
-  }
-
-  LogMessage(state, "[VERIFIER] Starting verification...");
-
-  try {
-    const proofs::MdocTests *test =
-        &proofs::mdoc_tests[state.proof_data.mdoc_test_index];
-
-    const ZkSpecStruct *zk_spec = nullptr;
-    for (int i = 0; i < kNumZkSpecs; ++i) {
-      if (kZkSpecs[i].num_attributes == state.proof_data.attributes.size()) {
-        zk_spec = &kZkSpecs[i];
-        break;
-      }
-    }
-
-    if (!zk_spec) {
-      LogMessage(state, "  [ERROR] ZK spec not found");
-      return false;
-    }
-
-    MdocVerifierErrorCode verifier_ret = run_mdoc_verifier(
-        state.proof_data.circuit_data.data(), state.proof_data.circuit_len,
-        test->pkx.as_pointer, test->pky.as_pointer, test->transcript,
-        test->transcript_size, state.proof_data.attributes.data(),
-        state.proof_data.attributes.size(), (const char *)test->now,
-        state.proof_data.zkproof.data(), state.proof_data.zkproof.size(),
-        test->doc_type, zk_spec);
-
-    if (verifier_ret != MDOC_VERIFIER_SUCCESS) {
-      LogMessage(state, "  [ERROR] VERIFICATION FAILED: " +
-                            std::to_string(verifier_ret));
+  std::string log_buffer;
+  
+  bool success = PerformZKVerification(state.proof_data, log_buffer);
+  
+  state.log += log_buffer;
+  if (success) {
+      state.status_message = "[OK] Proof verified successfully";
+  } else {
       state.status_message = "Verification failed";
-      return false;
-    }
-
-    LogMessage(state, "[SUCCESS] VERIFICATION SUCCESSFUL!");
-    state.status_message = "[OK] Proof verified successfully";
-    return true;
-
-  } catch (const std::exception &e) {
-    LogMessage(state, "  [ERROR] Exception: " + std::string(e.what()));
-    return false;
   }
+  return success;
+}
+
+// Wrapper for Export
+bool ExportProofWrapper(AppState &state, const std::string &filename) {
+    std::lock_guard<std::recursive_mutex> lock(state.mutex);
+    // Reconstruct config just for settings export (could be optimized)
+    ProverConfig config;
+    config.age_threshold = state.age_threshold;
+    config.selected_nationality = state.selected_nationality;
+    
+    return ExportProof(state.proof_data, config, filename);
 }
 
 // -----------------------------------------------------------------------------
@@ -712,7 +295,7 @@ void RenderMainWindow(AppState &state) {
   ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
   ImGui::Begin("Longfellow ZK", nullptr,
                ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
-                   ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar | 
+                   ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar |
                    ImGuiWindowFlags_NoBringToFrontOnFocus);
   ImGui::PopStyleVar();
 
@@ -833,8 +416,19 @@ void RenderMainWindow(AppState &state) {
         if (state.prove_nationality) {
           ImGui::SameLine();
           ImGui::SetNextItemWidth(200);
-          const char* nations[] = { "France (FRA)", "United States (USA)", "Germany (DEU)", "United Kingdom (GBR)", "Spain (ESP)" };
-          ImGui::Combo("##NatCombo", &state.selected_nationality, nations, IM_ARRAYSIZE(nations));
+          
+          static std::vector<std::string> nation_items;
+          static std::vector<const char*> nation_ptrs;
+          if (nation_items.empty()) {
+              for (int i=0; i<kNumCountries; ++i) {
+                  const auto& c = kCountries[i];
+                  std::string label = std::string(c.name) + " (" + c.alpha3 + " / " + c.numeric + ")";
+                  nation_items.push_back(label);
+              }
+              for (const auto& s : nation_items) nation_ptrs.push_back(s.c_str());
+          }
+          
+          ImGui::Combo("##NatCombo", &state.selected_nationality, nation_ptrs.data(), (int)nation_ptrs.size());
         }
         ImGui::Unindent(10);
         ImGui::Spacing();
@@ -902,7 +496,9 @@ void RenderMainWindow(AppState &state) {
                 ImGui::EndTooltip();
             }
 
-    
+            ImGui::Spacing();
+            ImGui::Checkbox("Verify Specific Vaccine (Comirnaty/Pfizer)", &state.prove_vaccine);
+            ImGui::Checkbox("Verify Health Insurance Status", &state.prove_insurance);
 
             ImGui::Spacing();
 
@@ -1059,7 +655,7 @@ void RenderMainWindow(AppState &state) {
       ImGui::SetCursorPos(ImVec2(10, 10));
       
       if (ImGui::Button("EXPORT JSON", ImVec2(120, 35))) {
-        if (ExportProof(state, "proof.json")) {
+        if (ExportProofWrapper(state, "proof.json")) {
             LogMessage(state, "Proof exported to proof.json");
         }
       }
@@ -1097,6 +693,7 @@ void RenderMainWindow(AppState &state) {
 }
 
 int main(int, char **) {
+  // Note: Log level might be handled inside zk_workflow if needed, or here globally
   proofs::set_log_level(proofs::INFO);
 
   glfwSetErrorCallback(glfw_error_callback);
