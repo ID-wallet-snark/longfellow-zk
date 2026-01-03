@@ -33,15 +33,17 @@ constexpr const char* kISO23220PhotoIDNamespace =
     "org.iso.23220.photoID.1";
 constexpr const char* kISO23220DTCNamespace = "org.iso.23220.dtc.1";
 constexpr const char* kFRANTSMDL1Namespace = "fr.gouv.ants.mdl.1";
+constexpr const char* kFRStudentMDL1Namespace = "fr.gouv.education.mdl.1";
 
 constexpr const char* kSupportedNamespaces[] = {
     kMDLNamespace,        kAAMVANamespace,    kEUAVNamespace,
     kEUDIPIDNamespace,    kISO23220Namespace, kISO23220PhotoIDNamespace,
-    kISO23220DTCNamespace, kFRANTSMDL1Namespace};
+    kISO23220DTCNamespace, kFRANTSMDL1Namespace, kFRStudentMDL1Namespace};
 
 constexpr const char* kIDPassDocType = "com.google.wallet.idcard.1";
 constexpr const char* kMDLDocType = "org.iso.18013.5.1.mDL";
 constexpr const char* kFRDocType = "fr.gouv.ants.mdl.1.permis";
+constexpr const char* kFRStudentDocType = "fr.gouv.education.mdl.1.student";
 constexpr const char* kEUAVDocType = "eu.europa.ec.av.1";
 constexpr const char* kEUDIPIDDocType = "eu.europa.ec.eudi.pid.1";
 constexpr const char* kISO23220PhotoIDDocType = "org.iso.23220.photoID.1";
@@ -286,6 +288,9 @@ constexpr MdocAttribute kMdocAttributes[] = {
     {"category_CE_expiry", kFRANTSMDL1Namespace},
     {"category_D1E_expiry", kFRANTSMDL1Namespace},
     {"category_DE_expiry", kFRANTSMDL1Namespace},
+
+    // French Student
+    {"is_student", kFRStudentMDL1Namespace},
 };
 
 }  // namespace proofs
