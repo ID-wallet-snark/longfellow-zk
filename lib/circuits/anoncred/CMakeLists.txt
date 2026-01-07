@@ -12,21 +12,46 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-proofs_add_tests(small_test)
-
-target_link_libraries(small_test mdoc)
-
-proofs_add_test(ptrcred_age_over_18_test)
-target_link_libraries(ptrcred_age_over_18_test mdoc)
-
-add_executable(ptrcred_eu_residency_test ptrcred_eu_residency_test.cc)
-target_link_libraries(ptrcred_eu_residency_test
+# small_test
+add_executable(small_test small_test.cc)
+target_link_libraries(small_test
   PRIVATE
   mdoc
-  gtest
-  gtest_main
   algebra
   ec
   flatsha
   util
+  gtest_main
+  gtest
+  benchmark_main
+  benchmark
 )
+
+# ptrcred_age_over_18_test
+add_executable(ptrcred_age_over_18_test ptrcred_age_over_18_test.cc)
+target_link_libraries(ptrcred_age_over_18_test
+  PRIVATE
+  mdoc
+  algebra
+  ec
+  flatsha
+  util
+  gtest_main
+  gtest
+  benchmark_main
+  benchmark
+)
+
+# ptrcred_eu_residency_test
+add_executable(ptrcred_eu_residency_test ptrcred_eu_residency_test.cc)
+target_link_libraries(ptrcred_eu_residency_test
+  PRIVATE
+  mdoc
+  algebra
+  ec
+  flatsha
+  util
+  gtest_main
+  gtest
+)
+
