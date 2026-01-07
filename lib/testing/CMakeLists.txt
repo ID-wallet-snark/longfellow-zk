@@ -12,5 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Note: benchmark and gtest must be available before this library is built
 add_library(testing_main test_main.cc)
-
+target_link_libraries(testing_main PUBLIC benchmark::benchmark GTest::gtest)
