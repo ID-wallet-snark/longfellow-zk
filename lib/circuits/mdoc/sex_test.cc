@@ -94,6 +94,20 @@ TEST_F(SexTest, FemaleAttributeDefinitionIsCorrect) {
 // Note: This test uses existing example mDocs. If they don't contain
 // the 'sex' field, the prover will return an error.
 // This confirms the circuit *logic* is running and looking for the data.
+//
+// IMPORTANT: The test mDoc examples (mdoc_tests[]) do NOT contain the 'sex' attribute
+// by default. This is EXPECTED BEHAVIOR for this demonstration.
+// The test passes by verifying:
+//   1. The circuit compilation works correctly
+//   2. The attribute structure is correct
+//   3. The system properly reports when the attribute is missing
+//
+// To have a fully working demo with verification success, you would need to:
+//   - Create a custom mDoc with the 'sex' attribute (requires CBOR encoding & signing)
+//   - Or use a real wallet mDoc that contains this attribute
+//   - Or accept this limitation (recommended for educational purposes)
+//
+// This is the same approach used in nationality_test.cc
 TEST_F(SexTest, VerifySexMaleLogic) {
     // Using the first example mDoc (Index 0)
     const MdocTests* test_mdoc = &mdoc_tests[0]; 
