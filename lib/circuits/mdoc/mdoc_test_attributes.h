@@ -15,7 +15,7 @@
 #ifndef PRIVACY_PROOFS_ZK_LIB_CIRCUITS_MDOC_MDOC_TEST_ATTRIBUTES_H_
 #define PRIVACY_PROOFS_ZK_LIB_CIRCUITS_MDOC_MDOC_TEST_ATTRIBUTES_H_
 
-#include "circuits/mdoc/mdoc_zk.h"
+#include "mdoc_zk.h"
 
 namespace proofs {
 namespace test {
@@ -147,9 +147,9 @@ static const RequestedAttribute driving_privileges_A = {
                      '3', '.', '5', '.', '1'},
     .id = {'d', 'r', 'i', 'v', 'i', 'n', 'g', '_', 'p', 'r', 'i', 'v', 'i', 'l',
            'e', 'g', 'e', 's'},
-    .cbor_value = {0x81, 0xa1, 0x75, 'v', 'e', 'h', 'i', 'c', 'l', 'e', '_',
-                   'c', 'a', 't', 'e', 'g', 'o', 'r', 'y', '_', 'c', 'o', 'd',
-                   'e', 0x61, 'A'},
+    .cbor_value = {0x81, 0xa1, 0x75, 'v', 'e', 'h', 'i',  'c', 'l',
+                   'e',  '_',  'c',  'a', 't', 'e', 'g',  'o', 'r',
+                   'y',  '_',  'c',  'o', 'd', 'e', 0x61, 'A'},
     .namespace_len = 17,
     .id_len = 18,
     .cbor_value_len = 26};
@@ -159,9 +159,9 @@ static const RequestedAttribute driving_privileges_B = {
                      '3', '.', '5', '.', '1'},
     .id = {'d', 'r', 'i', 'v', 'i', 'n', 'g', '_', 'p', 'r', 'i', 'v', 'i', 'l',
            'e', 'g', 'e', 's'},
-    .cbor_value = {0x81, 0xa1, 0x75, 'v', 'e', 'h', 'i', 'c', 'l', 'e', '_',
-                   'c', 'a', 't', 'e', 'g', 'o', 'r', 'y', '_', 'c', 'o', 'd',
-                   'e', 0x61, 'B'},
+    .cbor_value = {0x81, 0xa1, 0x75, 'v', 'e', 'h', 'i',  'c', 'l',
+                   'e',  '_',  'c',  'a', 't', 'e', 'g',  'o', 'r',
+                   'y',  '_',  'c',  'o', 'd', 'e', 0x61, 'B'},
     .namespace_len = 17,
     .id_len = 18,
     .cbor_value_len = 26};
@@ -171,9 +171,9 @@ static const RequestedAttribute driving_privileges_C = {
                      '3', '.', '5', '.', '1'},
     .id = {'d', 'r', 'i', 'v', 'i', 'n', 'g', '_', 'p', 'r', 'i', 'v', 'i', 'l',
            'e', 'g', 'e', 's'},
-    .cbor_value = {0x81, 0xa1, 0x75, 'v', 'e', 'h', 'i', 'c', 'l', 'e', '_',
-                   'c', 'a', 't', 'e', 'g', 'o', 'r', 'y', '_', 'c', 'o', 'd',
-                   'e', 0x61, 'C'},
+    .cbor_value = {0x81, 0xa1, 0x75, 'v', 'e', 'h', 'i',  'c', 'l',
+                   'e',  '_',  'c',  'a', 't', 'e', 'g',  'o', 'r',
+                   'y',  '_',  'c',  'o', 'd', 'e', 0x61, 'C'},
     .namespace_len = 17,
     .id_len = 18,
     .cbor_value_len = 26};
@@ -188,7 +188,17 @@ static const RequestedAttribute category_B_proxy = {
     .id_len = 6,
     .cbor_value_len = 2};
 
-}  // namespace test
-}  // namespace proofs
+// Student Status Attribute
+static const RequestedAttribute is_student = {
+    .namespace_id = {'f', 'r', '.', 'g', 'o', 'u', 'v', '.', 'e', 'd', 'u', 'c',
+                     'a', 't', 'i', 'o', 'n', '.', '1'},
+    .id = {'i', 's', '_', 's', 't', 'u', 'd', 'e', 'n', 't'},
+    .cbor_value = {0xf5}, // true
+    .namespace_len = 19,
+    .id_len = 10,
+    .cbor_value_len = 1};
 
-#endif  // PRIVACY_PROOFS_ZK_LIB_CIRCUITS_MDOC_MDOC_TEST_ATTRIBUTES_H_
+} // namespace test
+} // namespace proofs
+
+#endif // PRIVACY_PROOFS_ZK_LIB_CIRCUITS_MDOC_MDOC_TEST_ATTRIBUTES_H_

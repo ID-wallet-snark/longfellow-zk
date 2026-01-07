@@ -17,8 +17,8 @@
 
 #include <cstddef>
 
-#include "algebra/fp_generic.h"
-#include "algebra/sysdep.h"
+#include "fp_generic.h"
+#include "sysdep.h"
 
 namespace proofs {
 
@@ -31,7 +31,7 @@ done with our 128- and 256- bit fields.
 */
 struct FpReduce {
   template <class limb_t, class N>
-  static inline void reduction_step(limb_t a[], limb_t mprime, const N& m) {
+  static inline void reduction_step(limb_t a[], limb_t mprime, const N &m) {
     constexpr size_t kLimbs = N::kLimbs;
     if (kLimbs == 1) {
       // The general case (below) represents the (kLimbs+1)-word product as
@@ -54,6 +54,6 @@ struct FpReduce {
 
 template <size_t W, bool optimized_mul = false>
 using Fp = FpGeneric<W, optimized_mul, FpReduce>;
-}  // namespace proofs
+} // namespace proofs
 
-#endif  // PRIVACY_PROOFS_ZK_LIB_ALGEBRA_FP_H_
+#endif // PRIVACY_PROOFS_ZK_LIB_ALGEBRA_FP_H_

@@ -21,16 +21,16 @@
 #include <cstdint>
 #include <optional>
 
-#include "algebra/limb.h"
-#include "algebra/static_string.h"
-#include "algebra/sysdep.h"
-#include "util/panic.h"
+#include "../util/panic.h"
+#include "limb.h"
+#include "static_string.h"
+#include "sysdep.h"
+
 
 namespace proofs {
 
 // return a^-1 mod 2^L where L is the number of bits in limb_t
-template <class limb_t>
-static limb_t inv_mod_b(limb_t a) {
+template <class limb_t> static limb_t inv_mod_b(limb_t a) {
   // Let v=1-a.  We have 1/a=1/(1-v)=1+v+v^2+..., or
   // 1/a=(1+v)(1+v^2)(1+v^4)... At some point v^(2^k) becomes 0 mod
   // 2^L because v is even.
@@ -56,9 +56,8 @@ static limb_t inv_mod_b(limb_t a) {
 // This function should only be called on static input known at compile time.
 unsigned digit(char c);
 
-template <size_t W64>
-class Nat : public Limb<W64> {
- public:
+template <size_t W64> class Nat : public Limb<W64> {
+public:
   using Super = Limb<W64>;
   using T = Nat<W64>;
   using limb_t = typename Super::limb_t;
@@ -69,18 +68,18 @@ class Nat : public Limb<W64> {
   // Maximum length for an untrusted string, 2^64 ~ 20 decimal digits.
   static constexpr size_t kMaxStringLen = 20 * W64 + 1;
 
-  Nat() = default;  // uninitialized
+  Nat() = default; // uninitialized
   explicit Nat(uint64_t x) : Super(x) {}
 
-  explicit Nat(const std::array<uint64_t, kU64>& a) : Super(a) {}
+  explicit Nat(const std::array<uint64_t, kU64> &a) : Super(a) {}
 
   // Pre-condition: the caller of this function must check that the string
   // s is either a valid base-10 or base-16 representation of a natural number
   // that does not overflow the representation.
   // In our current implementation, this method is only used on static strings.
-  explicit Nat(const StaticString& ss) : Super(0) {
+  explicit Nat(const StaticString &ss) : Super(0) {
     limb_t base = 10u;
-    const char* s = ss.as_pointer;
+    const char *s = ss.as_pointer;
     if (s[0] == '0' && (s[1] == 'x' || s[1] == 'X')) {
       s += 2;
       base = 16u;
@@ -116,14 +115,14 @@ class Nat : public Limb<W64> {
     return std::nullopt;
   }
 
-  static std::optional<T> of_untrusted_string(const char* s) {
+  static std::optional<T> of_untrusted_string(const char *s) {
     T r(0);
     limb_t base = 10u;
     if (s[0] == '0' && (s[1] == 'x' || s[1] == 'X')) {
       s += 2;
       base = 16u;
     }
-    const char* p = s;
+    const char *p = s;
     for (size_t len = 0; len < kMaxStringLen && *p; ++len, ++p) {
       auto d = safe_digit(*p, base);
       if (!d.has_value()) {
@@ -146,24 +145,23 @@ class Nat : public Limb<W64> {
     return r;
   }
 
-  bool operator<(const T& y) const {
+  bool operator<(const T &y) const {
     T b = *this;
     limb_t bh = sub_limb(kLimbs, b.limb_, y.limb_);
     return (bh != 0);
   }
 
-  T& add(const T& y) {
+  T &add(const T &y) {
     (void)add_limb(kLimbs, limb_, y.limb_);
     return *this;
   }
-  T& sub(const T& y) {
+  T &sub(const T &y) {
     (void)sub_limb(kLimbs, limb_, y.limb_);
     return *this;
   }
 
   // *this += x * y
-  template <size_t WX, size_t WY>
-  T& mac(const Nat<WX>& x, const Nat<WY>& y) {
+  template <size_t WX, size_t WY> T &mac(const Nat<WX> &x, const Nat<WY> &y) {
     constexpr size_t kLimbsX = Nat<WX>::kLimbs;
     constexpr size_t kLimbsY = Nat<WY>::kLimbs;
     static_assert(kLimbs >= kLimbsX + kLimbsY);
@@ -181,7 +179,7 @@ class Nat : public Limb<W64> {
     }
   }
 
- private:
+private:
   // b *= a, returns false if overflow occurred.
   static bool muls(limb_t b[kLimbs], limb_t a) {
     limb_t h[kLimbs];
@@ -191,6 +189,6 @@ class Nat : public Limb<W64> {
   }
 };
 
-}  // namespace proofs
+} // namespace proofs
 
-#endif  // PRIVACY_PROOFS_ZK_LIB_ALGEBRA_NAT_H_
+#endif // PRIVACY_PROOFS_ZK_LIB_ALGEBRA_NAT_H_

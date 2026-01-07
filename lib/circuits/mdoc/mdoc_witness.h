@@ -59,7 +59,7 @@ struct FullAttribute {
   size_t val_ind;
   size_t val_len;
 
-  const uint8_t* mdl_ns;  // mdl namespace for the attribute
+  const uint8_t *mdl_ns; // mdl namespace for the attribute
 
   // Index for this attribute among all attributes in the mdoc hash list.
   size_t digest_id;
@@ -70,19 +70,19 @@ struct FullAttribute {
   size_t tag_len;
 
   // The original mdoc into which all offsets point.
-  const uint8_t* doc;
+  const uint8_t *doc;
 
-  bool operator==(const RequestedAttribute& y) const {
+  bool operator==(const RequestedAttribute &y) const {
     return y.id_len == id_len && memcmp(y.id, &doc[id_ind], id_len) == 0;
   }
 
-  size_t witness_length(const RequestedAttribute& attr) {
+  size_t witness_length(const RequestedAttribute &attr) {
     return id_len + val_len + 1 + 12;
   }
 };
 
 class ParsedMdoc {
- public:
+public:
   // Various cbor indices/witnesses for intermediate structures.
   CborIndex t_mso_, sig_, dksig_;
   CborIndex valid_, valid_from_, valid_until_;
@@ -119,39 +119,73 @@ class ParsedMdoc {
     }
 
     size_t di;
-    auto docs = root.lookup(resp, 9, (uint8_t*)"documents", di);
-    if (docs == nullptr) return false;
-    // Fields of Document are "docType", "issuerSigned", "deviceSigned", ?errors
+    auto docs = root.lookup(resp, 9, (uint8_t *)"documents", di);
+    if (docs == nullptr) {
+      log(ERROR, "Missing documents");
+      return false;
+    }
+    log(INFO, "Found documents");
 
     auto docs0 = docs[1].index(0);
-    if (docs0 == nullptr) return false;
+    if (docs0 == nullptr) {
+      log(ERROR, "Missing docs[0]");
+      return false;
+    }
+    log(INFO, "Found docs[0]");
 
-    auto dt = docs0[0].lookup(resp, 7, (uint8_t*)"docType", di);
-    if (dt == nullptr) return false;
+    auto dt = docs0[0].lookup(resp, 7, (uint8_t *)"docType", di);
+    if (dt == nullptr) {
+      log(ERROR, "Missing docType");
+      return false;
+    }
+    log(INFO, "Found docType");
     doc_type_.insert(doc_type_.begin(), resp + dt[1].u_.string.pos,
                      resp + dt[1].u_.string.pos + dt[1].u_.string.len);
 
     // The returned docs0 is the map, so index at [0].
-    auto is = docs0[0].lookup(resp, 12, (uint8_t*)"issuerSigned", di);
-    if (is == nullptr) return false;
+    auto is = docs0[0].lookup(resp, 12, (uint8_t *)"issuerSigned", di);
+    if (is == nullptr) {
+      log(ERROR, "Missing issuerSigned");
+      return false;
+    }
+    log(INFO, "Found issuerSigned");
 
-    auto ia = is[1].lookup(resp, 10, (uint8_t*)"issuerAuth", di);
-    if (ia == nullptr) return false;
+    auto ia = is[1].lookup(resp, 10, (uint8_t *)"issuerAuth", di);
+    if (ia == nullptr) {
+      log(ERROR, "Missing issuerAuth");
+      return false;
+    }
+    log(INFO, "Found issuerAuth");
 
     auto tmso = ia[1].index(2);
-    if (tmso == nullptr) return false;
+    if (tmso == nullptr) {
+      log(ERROR, "Missing tmso");
+      return false;
+    }
     copy_header(t_mso_, tmso);
     auto nsig = ia[1].index(3);
-    if (nsig == nullptr) return false;
+    if (nsig == nullptr) {
+      log(ERROR, "Missing nsig");
+      return false;
+    }
     copy_header(sig_, nsig);
 
-    auto ns = is[1].lookup(resp, 10, (uint8_t*)"nameSpaces", di);
-    if (ns == nullptr) return false;
+    auto ns = is[1].lookup(resp, 10, (uint8_t *)"nameSpaces", di);
+    if (ns == nullptr) {
+      log(ERROR, "Missing nameSpaces");
+      return false;
+    }
+    log(INFO, "Found nameSpaces");
 
     // Find the attribute witness we need from here.
-    for (const char* sn : kSupportedNamespaces) {
-      auto mldns = ns[1].lookup(resp, strlen(sn), (const uint8_t*)sn, di);
-      if (mldns == nullptr) continue;
+    for (const char *sn : kSupportedNamespaces) {
+      log(INFO, "Checking Namespace: %s", sn);
+      auto mldns = ns[1].lookup(resp, strlen(sn), (const uint8_t *)sn, di);
+      if (mldns == nullptr) {
+        log(INFO, "Namespace %s not found in mdoc", sn);
+        continue;
+      }
+      log(INFO, "Found Namespace %s", sn);
       size_t ai = 0;
       auto tattr = mldns[1].index(ai++);
       while (tattr != nullptr) {
@@ -160,22 +194,33 @@ class ParsedMdoc {
         size_t pos = tattr->children_[0].u_.string.pos;
         size_t end = pos + tattr->children_[0].u_.string.len;
         if (!er.decode(resp, end, pos, 0)) {
+          log(ERROR, "Failed to decode attribute");
           return false;
         }
 
-        auto ei = er.lookup(resp, 17, (uint8_t*)"elementIdentifier", di);
-        if (ei == nullptr) return false;
-        auto ev = er.lookup(resp, 12, (uint8_t*)"elementValue", di);
-        if (ev == nullptr) return false;
-        auto digid = er.lookup(resp, 8, (uint8_t*)"digestID", di);
-        if (digid == nullptr) return false;
+        auto ei = er.lookup(resp, 17, (uint8_t *)"elementIdentifier", di);
+        if (ei == nullptr) {
+          log(ERROR, "Missing elementIdentifier");
+          return false;
+        }
+        auto ev = er.lookup(resp, 12, (uint8_t *)"elementValue", di);
+        if (ev == nullptr) {
+          log(ERROR, "Missing elementValue");
+          return false;
+        }
+        auto digid = er.lookup(resp, 8, (uint8_t *)"digestID", di);
+        if (digid == nullptr) {
+          log(ERROR, "Missing digestID");
+          return false;
+        }
+        log(INFO, "Found attribute components");
 
         attributes_.push_back((FullAttribute){
             ei[1].position(),
             ei[1].length(),
             ev[1].position(),
             ev[1].length(),
-            (const uint8_t*)sn,
+            (const uint8_t *)sn,
             static_cast<size_t>(digid[1].u_.u64), /* digest_id */
             {0, 0, 0},                            /* default mso_ind */
             tattr->header_pos_,                   /* tag_ind */
@@ -187,72 +232,124 @@ class ParsedMdoc {
       }
     }
 
-    auto ds = docs0[0].lookup(resp, 12, (uint8_t*)"deviceSigned", di);
-    if (ds == nullptr) return false;
-    auto da = ds[1].lookup(resp, 10, (uint8_t*)"deviceAuth", di);
-    if (da == nullptr) return false;
-    auto dsi = da[1].lookup(resp, 15, (uint8_t*)"deviceSignature", di);
-    if (dsi == nullptr) return false;
+    auto ds = docs0[0].lookup(resp, 12, (uint8_t *)"deviceSigned", di);
+    if (ds == nullptr) {
+      log(ERROR, "Could not find deviceSigned");
+      return false;
+    }
+    log(INFO, "Found deviceSigned");
+    auto da = ds[1].lookup(resp, 10, (uint8_t *)"deviceAuth", di);
+    if (da == nullptr) {
+      log(ERROR, "Could not find deviceAuth");
+      return false;
+    }
+    log(INFO, "Found deviceAuth");
+    auto dsi = da[1].lookup(resp, 15, (uint8_t *)"deviceSignature", di);
+    if (dsi == nullptr) {
+      log(ERROR, "Could not find deviceSignature");
+      return false;
+    }
+    log(INFO, "Found deviceSignature");
     auto ndksig = dsi[1].index(3);
-    if (ndksig == nullptr) return false;
+    if (ndksig == nullptr) {
+      log(ERROR, "Could not find signature index 3");
+      return false;
+    }
     copy_header(dksig_, ndksig);
 
     // Then parse tagged mso. Skip 5 bytes to skip the D8 18 59 <len2>.
-    const uint8_t* pmso = resp + tmso->u_.string.pos + 5;
+    const uint8_t *pmso = resp + tmso->u_.string.pos + 5;
     size_t pos = 0;
     CborDoc mso;
-    if (!mso.decode(pmso, tmso->u_.string.len - 5, pos, 0)) return false;
+    if (!mso.decode(pmso, tmso->u_.string.len - 5, pos, 0)) {
+      log(ERROR, "Failed to decode MSO map");
+      return false;
+    }
     auto nv = mso.lookup(pmso, kValidityInfoLen, kValidityInfoID, valid_.ndx);
-    if (nv == nullptr) return false;
+    if (nv == nullptr) {
+      log(ERROR, "Missing validityInfo");
+      return false;
+    }
     copy_kv_header(valid_, nv);
 
     auto nvf = nv[1].lookup(pmso, kValidFromLen, kValidFromID, valid_from_.ndx);
-    if (nvf == nullptr) return false;
+    if (nvf == nullptr) {
+      log(ERROR, "Missing validFrom");
+      return false;
+    }
     copy_kv_header(valid_from_, nvf);
 
     auto nvu =
         nv[1].lookup(pmso, kValidUntilLen, kValidUntilID, valid_until_.ndx);
-    if (nvu == nullptr) return false;
+    if (nvu == nullptr) {
+      log(ERROR, "Missing validUntil");
+      return false;
+    }
     copy_kv_header(valid_until_, nvu);
 
     auto ndki = mso.lookup(pmso, kDeviceKeyInfoLen, kDeviceKeyInfoID,
                            dev_key_info_.ndx);
-    if (ndki == nullptr) return false;
+    if (ndki == nullptr) {
+      log(ERROR, "Missing deviceKeyInfo");
+      return false;
+    }
     copy_kv_header(dev_key_info_, ndki);
 
     auto ndk = ndki[1].lookup(pmso, kDeviceKeyLen, kDeviceKeyID, dev_key_.ndx);
-    if (ndk == nullptr) return false;
+    if (ndk == nullptr) {
+      log(ERROR, "Missing deviceKey in deviceKeyInfo");
+      return false;
+    }
     copy_kv_header(dev_key_, ndk);
 
     auto npkx = ndk[1].lookup_negative(-1, dev_key_pkx_.ndx);
-    if (npkx == nullptr) return false;
+    if (npkx == nullptr) {
+      log(ERROR, "Missing deviceKey pkx (-2)");
+      return false;
+    }
     copy_kv_header(dev_key_pkx_, npkx);
 
     auto npky = ndk[1].lookup_negative(-2, dev_key_pky_.ndx);
-    if (npky == nullptr) return false;
+    if (npky == nullptr) {
+      // Try fallback with N=2 (-1 - 2 = -3) just in case
+      npky = ndk[1].lookup_negative(2, dev_key_pky_.ndx);
+    }
+    if (npky == nullptr) {
+      log(ERROR, "Missing deviceKey pky (-3)");
+      return false;
+    }
     copy_kv_header(dev_key_pky_, npky);
 
     auto nvd =
         mso.lookup(pmso, kValueDigestsLen, kValueDigestsID, value_digests_.ndx);
-    if (nvd == nullptr) return false;
+    if (nvd == nullptr) {
+      log(ERROR, "Missing valueDigests");
+      return false;
+    }
     copy_kv_header(value_digests_, nvd);
 
-    // For backwards compatibility with 1f circuits, copy the hard-coded org_ if
-    // it is present. TODO(shelat): Remove this once all 1f circuits have
+    // For backwards compatibility with 1f circuits, copy the hard-coded org_
+    // if it is present. TODO(shelat): Remove this once all 1f circuits have
     // been updated.
     auto norg = nvd[1].lookup(pmso, kOrgLen, kOrgID, org_.ndx);
     if (norg != nullptr) {
       copy_kv_header(org_, norg);
     }
 
-    for (auto& attr : attributes_) {
+    for (auto &attr : attributes_) {
       size_t index;
-      auto nss = nvd[1].lookup(pmso, strlen((const char*)attr.mdl_ns),
+      auto nss = nvd[1].lookup(pmso, strlen((const char *)attr.mdl_ns),
                                attr.mdl_ns, index);
-      if (nss == nullptr) return false;
+      if (nss == nullptr) {
+        log(ERROR, "Missing valueDigest for namespace %s", attr.mdl_ns);
+        return false;
+      }
       uint64_t hi = (uint64_t)attr.digest_id;
       auto hattr = nss[1].lookup_unsigned(hi, attr.mso.ndx);
-      if (hattr == nullptr) return false;
+      if (hattr == nullptr) {
+        log(ERROR, "Missing valueDigest for attr ID %lu", hi);
+        return false;
+      }
       copy_kv_header(attr.mso, hattr);
     }
 
@@ -267,9 +364,9 @@ class ParsedMdoc {
     return true;
   }
 
- private:
+private:
   // Used to copy the results of a map lookup.
-  static void copy_kv_header(CborIndex& ind, const CborDoc* n) {
+  static void copy_kv_header(CborIndex &ind, const CborDoc *n) {
     ind.k = n[0].header_pos_;
     ind.v = n[1].header_pos_;
 
@@ -280,7 +377,7 @@ class ParsedMdoc {
   }
 
   // Used to copy the results of an index lookup.
-  static void copy_header(CborIndex& ind, const CborDoc* n) {
+  static void copy_header(CborIndex &ind, const CborDoc *n) {
     ind.k = n->header_pos_;
     ind.pos = n->u_.string.pos;
     ind.len = n->u_.string.len;
@@ -289,8 +386,7 @@ class ParsedMdoc {
 
 // Transform from u8 be (i.e., be[31] is the most significant byte) into
 // nat form, which requires first converting to le byte order.
-template <class Nat>
-Nat nat_from_be(const uint8_t be[/* Nat::kBytes */]) {
+template <class Nat> Nat nat_from_be(const uint8_t be[/* Nat::kBytes */]) {
   uint8_t tmp[Nat::kBytes];
   // Transform into byte-wise le representation.
   for (size_t i = 0; i < Nat::kBytes; ++i) {
@@ -301,8 +397,7 @@ Nat nat_from_be(const uint8_t be[/* Nat::kBytes */]) {
 
 // Transform from u32 be (i.e., be[0] is the most significant nibble)
 // into nat form, which requires first converting to le byte order.
-template <class Nat>
-Nat nat_from_u32(const uint32_t be[]) {
+template <class Nat> Nat nat_from_u32(const uint32_t be[]) {
   uint8_t tmp[Nat::kBytes];
   const size_t top = Nat::kBytes / 4;
   for (size_t i = 0; i < Nat::kBytes; ++i) {
@@ -311,8 +406,7 @@ Nat nat_from_u32(const uint32_t be[]) {
   return Nat::of_bytes(tmp);
 }
 
-template <typename Nat>
-Nat nat_from_hash(const uint8_t data[], size_t len) {
+template <typename Nat> Nat nat_from_hash(const uint8_t data[], size_t len) {
   uint8_t hash[kSHA256DigestSize];
   SHA256 sha;
   sha.Update(data, len);
@@ -323,7 +417,7 @@ Nat nat_from_hash(const uint8_t data[], size_t len) {
 
 // Append the cbor encoding of the length of a bytestring to buf.
 // This method handles bytestrings that are up to 255 bytes long.
-static inline void append_bytes_len(std::vector<uint8_t>& buf, size_t len) {
+static inline void append_bytes_len(std::vector<uint8_t> &buf, size_t len) {
   check(len < 65536, "Bytestring length too large");
   if (len < 24) {
     buf.push_back(0x40 + len);
@@ -338,7 +432,7 @@ static inline void append_bytes_len(std::vector<uint8_t>& buf, size_t len) {
 
 // Append the cbor encoding of the length of a text string to buf.
 // This method handles text strings that are up to 255 bytes long.
-static inline void append_text_len(std::vector<uint8_t>& buf, size_t len) {
+static inline void append_text_len(std::vector<uint8_t> &buf, size_t len) {
   check(len < 256, "Text length too large");
   if (len < 24) {
     buf.push_back(0x60 + len);
@@ -358,9 +452,9 @@ static inline void append_text_len(std::vector<uint8_t>& buf, size_t len) {
 // that mimics the bytes produced by the Android com.android.identity.wallet
 // library.
 template <class Nat>
-static Nat compute_transcript_hash(
-    const uint8_t transcript[], size_t len,
-    const std::vector<uint8_t>* docType = nullptr) {
+static Nat
+compute_transcript_hash(const uint8_t transcript[], size_t len,
+                        const std::vector<uint8_t> *docType = nullptr) {
   // The DeviceAuthenticationBytes is defined in 9.1.3.4 as:
   // DeviceAuthentication = [
   //    "DeviceAuthentication",
@@ -412,8 +506,8 @@ static Nat compute_transcript_hash(
 // Pad the input with the Field value 2 to indicate the positions
 // that are not part of the string.
 template <class Field>
-void fill_bit_string(DenseFiller<Field>& filler, const uint8_t s[/*len*/],
-                     size_t len, size_t max, const Field& Fs) {
+void fill_bit_string(DenseFiller<Field> &filler, const uint8_t s[/*len*/],
+                     size_t len, size_t max, const Field &Fs) {
   std::vector<typename Field::Elt> v(max * 8, Fs.of_scalar(2));
   for (size_t i = 0; i < max && i < len; ++i) {
     fill_byte(v, s[i], i, Fs);
@@ -422,16 +516,16 @@ void fill_bit_string(DenseFiller<Field>& filler, const uint8_t s[/*len*/],
 }
 
 template <class Field>
-void fill_byte(std::vector<typename Field::Elt>& v, uint8_t b, size_t i,
-               const Field& F) {
+void fill_byte(std::vector<typename Field::Elt> &v, uint8_t b, size_t i,
+               const Field &F) {
   for (size_t j = 0; j < 8; ++j) {
     v[i * 8 + j] = (b >> j & 0x1) ? F.one() : F.zero();
   }
 }
 
 template <class Field>
-bool fill_attribute(DenseFiller<Field>& filler, const RequestedAttribute& attr,
-                    const Field& F, size_t version) {
+bool fill_attribute(DenseFiller<Field> &filler, const RequestedAttribute &attr,
+                    const Field &F, size_t version) {
   // In version >= 4, the attribute is encoded as
   // <len(identifier)> <name of identifier> <elementValue> <attributeValue>.
   // This extra length field distinguishes the two attributes:
@@ -446,8 +540,8 @@ bool fill_attribute(DenseFiller<Field>& filler, const RequestedAttribute& attr,
   // Append the length of the elementIdentifier.
   append_text_len(vbuf, attr.id_len);
   vbuf.insert(vbuf.end(), attr.id, attr.id + attr.id_len);
-  append_text_len(vbuf, 12);  // len of "elementValue"
-  const char* ev = "elementValue";
+  append_text_len(vbuf, 12); // len of "elementValue"
+  const char *ev = "elementValue";
   vbuf.insert(vbuf.end(), ev, ev + 12);
 
   vbuf.insert(vbuf.end(), attr.cbor_value,
@@ -466,40 +560,36 @@ bool fill_attribute(DenseFiller<Field>& filler, const RequestedAttribute& attr,
   return true;
 }
 
-template <class EC, class ScalarField>
-class MdocSignatureWitness {
+template <class EC, class ScalarField> class MdocSignatureWitness {
   using Field = typename EC::Field;
   using Elt = typename Field::Elt;
   using Nat = typename Field::N;
   using EcdsaWitness = VerifyWitness3<EC, ScalarField>;
   using MacWitnessF = MacWitness<Field>;
   using f_128 = GF2_128<>;
-  const EC& ec_;
-  const f_128& gf_;
+  const EC &ec_;
+  const f_128 &gf_;
 
- public:
+public:
   Elt e_, e2_;      /* Issuer signature values. */
   Elt dpkx_, dpky_; /* device key */
   EcdsaWitness ew_, dkw_;
   MacWitnessF macs_[3]; /* macs for e_, dpkx_, dpky_ */
 
-  explicit MdocSignatureWitness(const EC& ec, const ScalarField& Fn,
-                                const f_128& gf)
-      : ec_(ec),
-        gf_(gf),
-        ew_(Fn, ec),
-        dkw_(Fn, ec),
+  explicit MdocSignatureWitness(const EC &ec, const ScalarField &Fn,
+                                const f_128 &gf)
+      : ec_(ec), gf_(gf), ew_(Fn, ec), dkw_(Fn, ec),
         macs_{MacWitnessF(ec.f_, gf_), MacWitnessF(ec.f_, gf_),
               MacWitnessF(ec.f_, gf_)} {}
 
-  void fill_witness(DenseFiller<Field>& filler) const {
+  void fill_witness(DenseFiller<Field> &filler) const {
     filler.push_back(e_);
     filler.push_back(dpkx_);
     filler.push_back(dpky_);
 
     ew_.fill_witness(filler);
     dkw_.fill_witness(filler);
-    for (auto& mac : macs_) {
+    for (auto &mac : macs_) {
       mac.fill_witness(filler);
     }
   }
@@ -541,18 +631,17 @@ class MdocSignatureWitness {
 // EC: implements the elliptic curve for the mdoc
 // Field: implements the field used to define the sumcheck circuit, which can
 //        be smaller than the EC field
-template <typename EC, typename Field>
-class MdocHashWitness {
+template <typename EC, typename Field> class MdocHashWitness {
   using ECField = typename EC::Field;
   using ECElt = typename ECField::Elt;
   using ECNat = typename ECField::N;
   using Elt = typename Field::Elt;
   using vindex = std::array<Elt, kCborIndexBits>;
 
-  const EC& ec_;
-  const Field& fn_;
+  const EC &ec_;
+  const Field &fn_;
 
- public:
+public:
   ECElt e_;           /* Issuer signature values. */
   ECElt dpkx_, dpky_; /* device key */
   uint8_t signed_bytes_[kMaxSHABlocks * 64];
@@ -573,20 +662,20 @@ class MdocHashWitness {
 
   uint8_t now_[20]; /* CBOR-formatted time used for expiry comparison. */
 
-  explicit MdocHashWitness(size_t num_attr, const EC& ec, const Field& Fn)
+  explicit MdocHashWitness(size_t num_attr, const EC &ec, const Field &Fn)
       : ec_(ec), fn_(Fn), num_attr_(num_attr) {}
 
-  void fill_cbor_index(DenseFiller<Field>& df, const CborIndex& ind) const {
+  void fill_cbor_index(DenseFiller<Field> &df, const CborIndex &ind) const {
     df.push_back(ind.k, kCborIndexBits, fn_);
   }
 
-  void fill_attr_shift(DenseFiller<Field>& df, const AttrShift& attr) const {
+  void fill_attr_shift(DenseFiller<Field> &df, const AttrShift &attr) const {
     df.push_back(attr.offset, kCborIndexBits, fn_);
     df.push_back(attr.len, kCborIndexBits, fn_);
   }
 
-  void fill_sha(DenseFiller<Field>& filler,
-                const FlatSHA256Witness::BlockWitness& bw) const {
+  void fill_sha(DenseFiller<Field> &filler,
+                const FlatSHA256Witness::BlockWitness &bw) const {
     BitPluckerEncoder<Field, kSHAPluckerBits> BPENC(fn_);
     for (size_t k = 0; k < 48; ++k) {
       filler.push_back(BPENC.mkpacked_v32(bw.outw[k]));
@@ -600,7 +689,7 @@ class MdocHashWitness {
     }
   }
 
-  void fill_witness(DenseFiller<Field>& filler) const {
+  void fill_witness(DenseFiller<Field> &filler) const {
     // Fill sha of main mso.
     filler.push_back(numb_, 8, fn_);
     // Don't push the prefix.
@@ -715,6 +804,6 @@ class MdocHashWitness {
     return true;
   }
 };
-}  // namespace proofs
+} // namespace proofs
 
-#endif  // PRIVACY_PROOFS_ZK_LIB_CIRCUITS_MDOC_MDOC_WITNESS_H_
+#endif // PRIVACY_PROOFS_ZK_LIB_CIRCUITS_MDOC_MDOC_WITNESS_H_

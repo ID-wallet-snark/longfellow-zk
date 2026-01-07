@@ -25,10 +25,11 @@
 #include <cstdint>
 #include <cstring>
 
-#include "util/panic.h"
-#include "openssl/sha.h"
-#include "openssl/evp.h"
 #include "openssl/aes.h"
+#include "openssl/evp.h"
+#include "openssl/sha.h"
+#include "panic.h"
+
 
 namespace proofs {
 
@@ -38,18 +39,20 @@ constexpr size_t kPRFInputSize = 16;
 constexpr size_t kPRFOutputSize = 16;
 
 class SHA256 {
- public:
+public:
   SHA256() { SHA256_Init(&sha_); }
 
   // Disable copy for good measure.
-  SHA256(const SHA256&) = delete;
-  SHA256& operator=(const SHA256&) = delete;
+  SHA256(const SHA256 &) = delete;
+  SHA256 &operator=(const SHA256 &) = delete;
 
-  void Update(const uint8_t bytes[/*n*/], size_t n) { SHA256_Update(&sha_, bytes, n); }
+  void Update(const uint8_t bytes[/*n*/], size_t n) {
+    SHA256_Update(&sha_, bytes, n);
+  }
   void DigestData(uint8_t digest[/* kSHA256DigestSize */]) {
     SHA256_Final(digest, &sha_);
   }
-  void CopyState(const SHA256& src) { sha_ = src.sha_; }
+  void CopyState(const SHA256 &src) { sha_ = src.sha_; }
 
   void Update8(uint64_t x) {
     uint8_t buf[8];
@@ -60,14 +63,14 @@ class SHA256 {
     Update(buf, 8);
   }
 
- private:
+private:
   SHA256_CTX sha_;
 };
 
 // A pseudo-random function interface. This implementation uses AES in ECB mode.
 // The caller must ensure that arguments are not reused.
 class PRF {
- public:
+public:
   explicit PRF(const uint8_t key[/*kPRFKeySize*/]) {
     ctx_ = EVP_CIPHER_CTX_new();
     int ret =
@@ -78,8 +81,8 @@ class PRF {
   ~PRF() { EVP_CIPHER_CTX_free(ctx_); }
 
   // Disable copy for good measure.
-  PRF(const PRF&) = delete;
-  PRF& operator=(const PRF&) = delete;
+  PRF(const PRF &) = delete;
+  PRF &operator=(const PRF &) = delete;
 
   // Evaluate the PRF on the input and write the output to the output buffer.
   // This method should only be used internally by the Transcript class. The
@@ -93,8 +96,8 @@ class PRF {
     check(ret == 1, "EVP_EncryptUpdate failed");
   }
 
- private:
-  EVP_CIPHER_CTX* ctx_;
+private:
+  EVP_CIPHER_CTX *ctx_;
 };
 
 // Generate n random bytes, following the openssl API convention.
@@ -103,6 +106,6 @@ void rand_bytes(uint8_t out[/*n*/], size_t n);
 
 void hex_to_str(char out[/* 2*n + 1*/], const uint8_t in[/*n*/], size_t n);
 
-}  // namespace proofs
+} // namespace proofs
 
-#endif  // PRIVACY_PROOFS_ZK_LIB_UTIL_CRYPTO_H_
+#endif // PRIVACY_PROOFS_ZK_LIB_UTIL_CRYPTO_H_

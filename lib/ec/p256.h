@@ -33,9 +33,9 @@ and has an order of
 
 */
 
-#include "algebra/fp.h"
-#include "algebra/fp_p256.h"
-#include "ec/elliptic_curve.h"
+#include "../algebra/fp.h"
+#include "../algebra/fp_p256.h"
+#include "elliptic_curve.h"
 
 namespace proofs {
 
@@ -55,6 +55,6 @@ extern const Fp256Scalar p256_scalar;
 typedef EllipticCurve<Fp256Base, 4, 256> P256;
 
 extern const P256 p256;
-}  // namespace proofs
+} // namespace proofs
 
-#endif  // PRIVACY_PROOFS_ZK_LIB_EC_P256_H_
+#endif // PRIVACY_PROOFS_ZK_LIB_EC_P256_H_

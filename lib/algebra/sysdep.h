@@ -19,18 +19,18 @@
 
 #include <cstdint>
 
-#include "util/panic.h"  // IWYU pragma: keep
+#include "../util/panic.h" // IWYU pragma: keep
 
 #if defined(__x86_64__) || defined(__i386__)
 // system-dependent basic arithmetic functions: add with carry
 // and 64x64->128 bit multiplication
-#include <x86intrin.h>  // IWYU pragma: keep
+#include <x86intrin.h> // IWYU pragma: keep
 #endif
 
 namespace proofs {
 
 #if defined(__x86_64__)
-static inline uint64_t adc(uint64_t* a, uint64_t b, uint64_t c) {
+static inline uint64_t adc(uint64_t *a, uint64_t b, uint64_t c) {
   // unsigned long long (not uint64_t) is *required* by the
   // _addcarry_u64() prototype.  uint64_t is unsigned long on
   // linux, and pointers to the two types are incompatible even
@@ -40,40 +40,38 @@ static inline uint64_t adc(uint64_t* a, uint64_t b, uint64_t c) {
   *a = out;
   return c;
 }
-static inline uint32_t adc(uint32_t* a, uint32_t b, uint32_t c) {
+static inline uint32_t adc(uint32_t *a, uint32_t b, uint32_t c) {
   return _addcarry_u32(c, *a, b, a);
 }
-static inline uint64_t sbb(uint64_t* a, uint64_t b, uint64_t c) {
+static inline uint64_t sbb(uint64_t *a, uint64_t b, uint64_t c) {
   unsigned long long out;
   c = _subborrow_u64(c, *a, b, &out);
   *a = out;
   return c;
 }
-static inline uint32_t sbb(uint32_t* a, uint32_t b, uint32_t c) {
+static inline uint32_t sbb(uint32_t *a, uint32_t b, uint32_t c) {
   return _subborrow_u32(c, *a, b, a);
 }
-static inline void mulq(uint64_t* l, uint64_t* h, uint64_t a, uint64_t b) {
+static inline void mulq(uint64_t *l, uint64_t *h, uint64_t a, uint64_t b) {
   asm("mulx %2, %0, %1" : "=r"(*l), "=r"(*h) : "r"(b), "d"(a));
 }
 #elif defined(__i386__)
-static inline uint32_t adc(uint32_t* a, uint32_t b, uint32_t c) {
+static inline uint32_t adc(uint32_t *a, uint32_t b, uint32_t c) {
   return _addcarry_u32(c, *a, b, a);
 }
-static inline uint32_t sbb(uint32_t* a, uint32_t b, uint32_t c) {
+static inline uint32_t sbb(uint32_t *a, uint32_t b, uint32_t c) {
   return _subborrow_u32(c, *a, b, a);
 }
 
 // these two functions are supposed to be defined but are
 // never called
-static inline unsigned long long adc(unsigned long long* a,
-                                     unsigned long long b,
-                                     unsigned long long c) {
+static inline unsigned long long
+adc(unsigned long long *a, unsigned long long b, unsigned long long c) {
   check(false, "adcll() not defined");
   return 0;
 }
-static inline unsigned long long sbb(unsigned long long* a,
-                                     unsigned long long b,
-                                     unsigned long long c) {
+static inline unsigned long long
+sbb(unsigned long long *a, unsigned long long b, unsigned long long c) {
   check(false, "sbbll() not defined");
   return 0;
 }
@@ -82,35 +80,33 @@ static inline unsigned long long sbb(unsigned long long* a,
 #elif defined(__clang__)
 // The clang intrinsics use the builtin-types int, long, etc.
 // Thus we define adc() and sbb() in terms of those types.
-static inline unsigned long long adc(unsigned long long* a,
-                                     unsigned long long b,
-                                     unsigned long long c) {
+static inline unsigned long long
+adc(unsigned long long *a, unsigned long long b, unsigned long long c) {
   *a = __builtin_addcll(*a, b, c, &c);
   return c;
 }
-static inline unsigned long adc(unsigned long* a, unsigned long b,
+static inline unsigned long adc(unsigned long *a, unsigned long b,
                                 unsigned long c) {
   *a = __builtin_addcl(*a, b, c, &c);
   return c;
 }
-static inline unsigned int adc(unsigned int* a, unsigned int b,
+static inline unsigned int adc(unsigned int *a, unsigned int b,
                                unsigned int c) {
   *a = __builtin_addc(*a, b, c, &c);
   return c;
 }
 
-static inline unsigned long long sbb(unsigned long long* a,
-                                     unsigned long long b,
-                                     unsigned long long c) {
+static inline unsigned long long
+sbb(unsigned long long *a, unsigned long long b, unsigned long long c) {
   *a = __builtin_subcll(*a, b, c, &c);
   return c;
 }
-static inline unsigned long sbb(unsigned long* a, unsigned long b,
+static inline unsigned long sbb(unsigned long *a, unsigned long b,
                                 unsigned long c) {
   *a = __builtin_subcl(*a, b, c, &c);
   return c;
 }
-static inline unsigned int sbb(unsigned int* a, unsigned int b,
+static inline unsigned int sbb(unsigned int *a, unsigned int b,
                                unsigned int c) {
   *a = __builtin_subc(*a, b, c, &c);
   return c;
@@ -118,44 +114,58 @@ static inline unsigned int sbb(unsigned int* a, unsigned int b,
 
 #if defined(__SIZEOF_INT128__)
 // It seems that __SIZEOF_INT128__ is defined if __uint128_t is.
-static inline void mulq(uint64_t* l, uint64_t* h, uint64_t a, uint64_t b) {
+static inline void mulq(uint64_t *l, uint64_t *h, uint64_t a, uint64_t b) {
   __uint128_t p = (__uint128_t)b * (__uint128_t)a;
   *l = p;
   *h = p >> 64;
 }
-#else  // defined(__SIZEOF_INT128__)
+#else // defined(__SIZEOF_INT128__)
 #define SYSDEP_MULQ64_NOT_DEFINED
-#endif  // defined(__SIZEOF_INT128__)
+#endif // defined(__SIZEOF_INT128__)
+
+#elif defined(__aarch64__)
+// ARM64 Support via __int128 and uint64 extension
+static inline uint64_t adc(uint64_t *a, uint64_t b, uint64_t c) {
+  unsigned __int128 sum = (unsigned __int128)*a + b + c;
+  *a = (uint64_t)sum;
+  return (uint64_t)(sum >> 64);
+}
+static inline uint32_t adc(uint32_t *a, uint32_t b, uint32_t c) {
+  uint64_t sum = (uint64_t)*a + b + c;
+  *a = (uint32_t)sum;
+  return (uint32_t)(sum >> 32);
+}
+static inline uint64_t sbb(uint64_t *a, uint64_t b, uint64_t c) {
+  unsigned __int128 val = (unsigned __int128)*a;
+  unsigned __int128 sub = (unsigned __int128)b + c;
+  *a = (uint64_t)(val - sub);
+  return (val < sub) ? 1 : 0;
+}
+static inline uint32_t sbb(uint32_t *a, uint32_t b, uint32_t c) {
+  uint64_t val = (uint64_t)*a;
+  uint64_t sub = (uint64_t)b + c;
+  *a = (uint32_t)(val - sub);
+  return (val < sub) ? 1 : 0;
+}
+static inline void mulq(uint64_t *l, uint64_t *h, uint64_t a, uint64_t b) {
+  unsigned __int128 p = (unsigned __int128)a * b;
+  *l = (uint64_t)p;
+  *h = (uint64_t)(p >> 64);
+}
 #endif
 
-static inline void mulq(uint32_t* l, uint32_t* h, uint32_t a, uint32_t b) {
+static inline void mulq(uint32_t *l, uint32_t *h, uint32_t a, uint32_t b) {
   uint64_t p = (uint64_t)b * (uint64_t)a;
   *l = p;
   *h = p >> 32;
 }
 
-// Identity function whose only purpose is to confuse the compiler.
-// We have no coherent theory of when and why this is useful, but
-// here are a couple of cases where this hack makes a difference:
-//
-// * Passing the cmov() values through identity_limb() seems
-//   to favor the generation of a conditional move instruction
-//   as opposed to a conditional branch.
-// * Clang and gcc match a+b+carry to generate the adcq instruction,
-//   but a+0+carry becomes a+carry and the match fails.  So
-//   we pretend that the zero is not a zero.
-// * A similar issue arises in subtract with carry.
-//
-// This function is obviously a hack.  Works for me today but YMMV.
-//
-template <class limb_t>
-static inline limb_t identity_limb(limb_t v) {
+template <class limb_t> static inline limb_t identity_limb(limb_t v) {
   asm("" : "+r"(v)::);
   return v;
 }
 
-template <class limb_t>
-static inline limb_t zero_limb() {
+template <class limb_t> static inline limb_t zero_limb() {
   return identity_limb<limb_t>(0);
 }
 
@@ -343,50 +353,50 @@ static inline uint64_t sub_sysdep(uint64_t a, uint64_t y, uint64_t m) {
 static inline void cmovne(size_t W, uint64_t a[/*W*/], uint64_t x, uint64_t y,
                           const uint64_t b[/*W*/]) {
   if (W == 1) {
-    asm("cmp %[x], %[y]\n\t"                //
-        "csel %[a0], %[a0], %[b0], eq\n\t"  //
-        : [a0] "+r"(a[0])                   //
-        : [x] "r"(x), [y] "ri"(y),          //
-          [b0] "r"(b[0])                    //
+    asm("cmp %[x], %[y]\n\t"               //
+        "csel %[a0], %[a0], %[b0], eq\n\t" //
+        : [a0] "+r"(a[0])                  //
+        : [x] "r"(x), [y] "ri"(y),         //
+          [b0] "r"(b[0])                   //
         : "cc");
   } else if (W == 2) {
-    asm("cmp %[x], %[y]\n\t"                //
-        "csel %[a0], %[a0], %[b0], eq\n\t"  //
-        "csel %[a1], %[a1], %[b1], eq\n\t"  //
-        : [a0] "+r"(a[0]),                  //
-          [a1] "+r"(a[1])                   //
-        : [x] "r"(x), [y] "ri"(y),          //
-          [b0] "r"(b[0]),                   //
-          [b1] "r"(b[1])                    //
+    asm("cmp %[x], %[y]\n\t"               //
+        "csel %[a0], %[a0], %[b0], eq\n\t" //
+        "csel %[a1], %[a1], %[b1], eq\n\t" //
+        : [a0] "+r"(a[0]),                 //
+          [a1] "+r"(a[1])                  //
+        : [x] "r"(x), [y] "ri"(y),         //
+          [b0] "r"(b[0]),                  //
+          [b1] "r"(b[1])                   //
         : "cc");
   } else if (W == 3) {
-    asm("cmp %[x], %[y]\n\t"                //
-        "csel %[a0], %[a0], %[b0], eq\n\t"  //
-        "csel %[a1], %[a1], %[b1], eq\n\t"  //
-        "csel %[a2], %[a2], %[b2], eq\n\t"  //
-        : [a0] "+r"(a[0]),                  //
-          [a1] "+r"(a[1]),                  //
-          [a2] "+r"(a[2])                   //
-        : [x] "r"(x), [y] "ri"(y),          //
-          [b0] "r"(b[0]),                   //
-          [b1] "r"(b[1]),                   //
-          [b2] "r"(b[2])                    //
+    asm("cmp %[x], %[y]\n\t"               //
+        "csel %[a0], %[a0], %[b0], eq\n\t" //
+        "csel %[a1], %[a1], %[b1], eq\n\t" //
+        "csel %[a2], %[a2], %[b2], eq\n\t" //
+        : [a0] "+r"(a[0]),                 //
+          [a1] "+r"(a[1]),                 //
+          [a2] "+r"(a[2])                  //
+        : [x] "r"(x), [y] "ri"(y),         //
+          [b0] "r"(b[0]),                  //
+          [b1] "r"(b[1]),                  //
+          [b2] "r"(b[2])                   //
         : "cc");
   } else if (W == 4) {
-    asm("cmp %[x], %[y]\n\t"                //
-        "csel %[a0], %[a0], %[b0], eq\n\t"  //
-        "csel %[a1], %[a1], %[b1], eq\n\t"  //
-        "csel %[a2], %[a2], %[b2], eq\n\t"  //
-        "csel %[a3], %[a3], %[b3], eq\n\t"  //
-        : [a0] "+r"(a[0]),                  //
-          [a1] "+r"(a[1]),                  //
-          [a2] "+r"(a[2]),                  //
-          [a3] "+r"(a[3])                   //
-        : [x] "r"(x), [y] "ri"(y),          //
-          [b0] "r"(b[0]),                   //
-          [b1] "r"(b[1]),                   //
-          [b2] "r"(b[2]),                   //
-          [b3] "r"(b[3])                    //
+    asm("cmp %[x], %[y]\n\t"               //
+        "csel %[a0], %[a0], %[b0], eq\n\t" //
+        "csel %[a1], %[a1], %[b1], eq\n\t" //
+        "csel %[a2], %[a2], %[b2], eq\n\t" //
+        "csel %[a3], %[a3], %[b3], eq\n\t" //
+        : [a0] "+r"(a[0]),                 //
+          [a1] "+r"(a[1]),                 //
+          [a2] "+r"(a[2]),                 //
+          [a3] "+r"(a[3])                  //
+        : [x] "r"(x), [y] "ri"(y),         //
+          [b0] "r"(b[0]),                  //
+          [b1] "r"(b[1]),                  //
+          [b2] "r"(b[2]),                  //
+          [b3] "r"(b[3])                   //
         : "cc");
   } else {
     for (size_t i = 0; i < W; ++i) {
@@ -420,7 +430,7 @@ static inline uint64_t sub_sysdep(uint64_t a, uint64_t y, uint64_t m) {
   return a + m;
 }
 
-#else  // generic portable code
+#else // generic portable code
 
 // a = (x != y) ? b : a
 template <class limb_t>
@@ -453,6 +463,6 @@ static inline limb_t sub_sysdep(limb_t a, limb_t y, limb_t m) {
 
 #endif
 
-}  // namespace proofs
+} // namespace proofs
 
-#endif  // PRIVACY_PROOFS_ZK_LIB_ALGEBRA_SYSDEP_H_
+#endif // PRIVACY_PROOFS_ZK_LIB_ALGEBRA_SYSDEP_H_

@@ -18,9 +18,9 @@
 #include <array>
 #include <cstdint>
 
-#include "algebra/fp_generic.h"
-#include "algebra/nat.h"
-#include "algebra/sysdep.h"
+#include "fp_generic.h"
+#include "nat.h"
+#include "sysdep.h"
 
 namespace proofs {
 // Optimized implementation of
@@ -38,9 +38,8 @@ struct Fp256Reduce {
       0xFFFFFFFF00000001u,
   };
 
-
   static inline void reduction_step(uint64_t a[], uint64_t mprime,
-                                    const Nat<4>& m) {
+                                    const Nat<4> &m) {
     // p = 2^256 - 2^224 + 2^192 + 2^96 - 1
     // mprime = 1.
     // This step computes a += (mprime * a0) * p
@@ -52,7 +51,7 @@ struct Fp256Reduce {
   }
 
   static inline void reduction_step(uint32_t a[], uint32_t mprime,
-                                    const Nat<4>& m) {
+                                    const Nat<4> &m) {
     uint32_t r = a[0];
     uint32_t l[8] = {r, 0, 0, 0, 0, 0, 0, r};
     negaccum(10, a, 8, l);
@@ -63,6 +62,6 @@ struct Fp256Reduce {
 
 template <bool optimized_mul = false>
 using Fp256 = FpGeneric<4, optimized_mul, Fp256Reduce>;
-}  // namespace proofs
+} // namespace proofs
 
-#endif  // PRIVACY_PROOFS_ZK_LIB_ALGEBRA_FP_P256_H_
+#endif // PRIVACY_PROOFS_ZK_LIB_ALGEBRA_FP_P256_H_

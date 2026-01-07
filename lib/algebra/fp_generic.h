@@ -21,10 +21,10 @@
 #include <optional>
 #include <utility>
 
-#include "algebra/nat.h"
-#include "algebra/static_string.h"
-#include "algebra/sysdep.h"
-#include "util/panic.h"
+#include "../util/panic.h"
+#include "nat.h"
+#include "static_string.h"
+#include "sysdep.h"
 
 namespace proofs {
 struct PrimeFieldTypeTag {};
@@ -32,9 +32,8 @@ struct PrimeFieldTypeTag {};
 /*
 The Fp_generic class contains the implementation of a finite field.
 */
-template <size_t W64, bool optimized_mul, class OPS>
-class FpGeneric {
- public:
+template <size_t W64, bool optimized_mul, class OPS> class FpGeneric {
+public:
   // Type alias for a natural number, and the limbs within the nat are public
   // to allow casting and operations.
   using N = Nat<W64>;
@@ -55,11 +54,11 @@ class FpGeneric {
    */
   struct Elt {
     N n;
-    bool operator==(const Elt& y) const { return n == y.n; }
-    bool operator!=(const Elt& y) const { return !operator==(y); }
+    bool operator==(const Elt &y) const { return n == y.n; }
+    bool operator!=(const Elt &y) const { return !operator==(y); }
   };
 
-  explicit FpGeneric(const N& modulus) : m_(modulus), negm_(N{}) {
+  explicit FpGeneric(const N &modulus) : m_(modulus), negm_(N{}) {
     negm_.sub(m_);
 
     // compute rawhalf = (m + 1) / 2 = floor(m / 2) + 1 since m is odd
@@ -104,17 +103,16 @@ class FpGeneric {
   // fail to compile otherwise.
   explicit FpGeneric() : FpGeneric(N(OPS::kModulus)) {}
 
-  FpGeneric(const FpGeneric&) = delete;
-  FpGeneric& operator=(const FpGeneric&) = delete;
+  FpGeneric(const FpGeneric &) = delete;
+  FpGeneric &operator=(const FpGeneric &) = delete;
 
-  template <size_t N>
-  Elt of_string(const char (&s)[N]) const {
+  template <size_t N> Elt of_string(const char (&s)[N]) const {
     return of_charp(&s[0]);
   }
 
-  Elt of_string(const StaticString& s) const { return of_charp(s.as_pointer); }
+  Elt of_string(const StaticString &s) const { return of_charp(s.as_pointer); }
 
-  std::optional<Elt> of_untrusted_string(const char* s) const {
+  std::optional<Elt> of_untrusted_string(const char *s) const {
     auto maybe = N::of_untrusted_string(s);
     if (maybe.has_value() && maybe.value() < m_) {
       return to_montgomery(maybe.value());
@@ -131,7 +129,7 @@ class FpGeneric {
   // have a Montgomery multiplier.
 
   // a += y
-  void add(N& a, const N& y) const {
+  void add(N &a, const N &y) const {
     if (kLimbs == 1) {
       limb_t aa = a.limb_[0], yy = y.limb_[0], mm = m_.limb_[0];
       a.limb_[0] = addcmovc(aa - mm, yy, aa + yy);
@@ -141,11 +139,11 @@ class FpGeneric {
     }
   }
 
-  void add(Elt& a, const Elt& y) const { add(a.n, y.n); }
+  void add(Elt &a, const Elt &y) const { add(a.n, y.n); }
 
   // a -= y
   //
-  void sub(N& a, const N& y) const {
+  void sub(N &a, const N &y) const {
     if (kLimbs == 1) {
       a.limb_[0] = sub_sysdep(a.limb_[0], y.limb_[0], m_.limb_[0]);
     } else {
@@ -154,10 +152,10 @@ class FpGeneric {
     }
   }
 
-  void sub(Elt& a, const Elt& y) const { sub(a.n, y.n); }
+  void sub(Elt &a, const Elt &y) const { sub(a.n, y.n); }
 
   // x *= y, Montgomery
-  void mul(Elt& x, const Elt& y) const {
+  void mul(Elt &x, const Elt &y) const {
     if (optimized_mul) {
       if (x == zero() || y == one()) {
         return;
@@ -171,28 +169,28 @@ class FpGeneric {
   }
 
   // Nat by Elt
-  void mul(N& x, const Elt& y) const { mul0(x, y); }
+  void mul(N &x, const Elt &y) const { mul0(x, y); }
 
   // x = -x
-  void neg(Elt& x) const {
+  void neg(Elt &x) const {
     Elt y(k_[0]);
     sub(y, x);
     x = y;
   }
 
   // x = 1/x
-  void invert(Elt& x) const { x = invertf(x); }
+  void invert(Elt &x) const { x = invertf(x); }
 
   // functional interface
-  Elt addf(Elt a, const Elt& y) const {
+  Elt addf(Elt a, const Elt &y) const {
     add(a, y);
     return a;
   }
-  Elt subf(Elt a, const Elt& y) const {
+  Elt subf(Elt a, const Elt &y) const {
     sub(a, y);
     return a;
   }
-  Elt mulf(Elt a, const Elt& y) const {
+  Elt mulf(Elt a, const Elt &y) const {
     mul(a, y);
     return a;
   }
@@ -213,11 +211,11 @@ class FpGeneric {
         a.shiftr(1);
         byhalf(u);
       } else {
-        if (a < b) {  // swap to maintain invariant
+        if (a < b) { // swap to maintain invariant
           std::swap(a, b);
           std::swap(u, v);
         }
-        a.sub(b).shiftr(1);  // a = (a-b)/2
+        a.sub(b).shiftr(1); // a = (a-b)/2
         sub(u, v);
         byhalf(u);
       }
@@ -226,7 +224,7 @@ class FpGeneric {
   }
 
   // Reference implementation, unused.
-  N from_montgomery_reference(const Elt& x) const {
+  N from_montgomery_reference(const Elt &x) const {
     Elt r{N(1)};
     mul(r, x);
     return r.n;
@@ -234,8 +232,8 @@ class FpGeneric {
 
   // Optimized implementation of from_montgomery_reference(), exploiting
   // the fact that the multiplicand is Elt{N(1)}.
-  N from_montgomery(const Elt& x) const {
-    limb_t a[2 * kLimbs + 1];  // uninitialized
+  N from_montgomery(const Elt &x) const {
+    limb_t a[2 * kLimbs + 1]; // uninitialized
     mov(kLimbs, a, x.n.limb_);
     a[kLimbs] = zero_limb<limb_t>();
     for (size_t i = 0; i < kLimbs; ++i) {
@@ -248,13 +246,13 @@ class FpGeneric {
     return r;
   }
 
-  Elt to_montgomery(const N& xn) const {
+  Elt to_montgomery(const N &xn) const {
     Elt x{xn};
     mul(x, rsquare_);
     return x;
   }
 
-  bool in_subfield(const Elt& e) const { return true; }
+  bool in_subfield(const Elt &e) const { return true; }
 
   // The of_scalar methods should only be used on trusted inputs known
   // at compile time to be valid field elements. As a result, they return
@@ -270,10 +268,10 @@ class FpGeneric {
   }
 
   Elt of_scalar_field(uint64_t a) const { return of_scalar_field(N(a)); }
-  Elt of_scalar_field(const std::array<uint64_t, W64>& a) const {
+  Elt of_scalar_field(const std::array<uint64_t, W64> &a) const {
     return of_scalar_field(N(a));
   }
-  Elt of_scalar_field(const N& a) const {
+  Elt of_scalar_field(const N &a) const {
     check(a < m_, "of_scalar must be less than m");
     return to_montgomery(a);
   }
@@ -284,13 +282,11 @@ class FpGeneric {
   // The scale factor is computed by a relatively slow routine
   // reduce_scale(), which returns a special type indexed
   // by WX to avoid confusion.
-  template <size_t WX>
-  struct ScaleElt {
+  template <size_t WX> struct ScaleElt {
     Elt e;
   };
 
-  template <size_t WX>
-  ScaleElt<WX> reduce_scale() const {
+  template <size_t WX> ScaleElt<WX> reduce_scale() const {
     Elt e = rsquare_;
     for (size_t i = 0; i < Nat<WX>::kBits; ++i) {
       add(e, e);
@@ -299,15 +295,14 @@ class FpGeneric {
   }
 
   template <size_t WX>
-  Elt reduce(const Nat<WX>& x, const ScaleElt<WX>& scale) const {
+  Elt reduce(const Nat<WX> &x, const ScaleElt<WX> &scale) const {
     Elt r;
     r.n = reduce_nat(x);
     mul(r, scale.e);
     return r;
   }
 
-  template <size_t WX>
-  Elt reduce(const Nat<WX>& x) const {
+  template <size_t WX> Elt reduce(const Nat<WX> &x) const {
     return reduce(x, reduce_scale<WX>());
   }
 
@@ -320,7 +315,7 @@ class FpGeneric {
     }
   }
 
-  void to_bytes_field(uint8_t ab[/* kBytes */], const Elt& x) const {
+  void to_bytes_field(uint8_t ab[/* kBytes */], const Elt &x) const {
     from_montgomery(x).to_bytes(ab);
   }
 
@@ -328,15 +323,15 @@ class FpGeneric {
     return of_bytes_field(ab);
   }
 
-  void to_bytes_subfield(uint8_t ab[/* kBytes */], const Elt& x) const {
+  void to_bytes_subfield(uint8_t ab[/* kBytes */], const Elt &x) const {
     to_bytes_field(ab, x);
   }
 
-  const Elt& zero() const { return k_[0]; }
-  const Elt& one() const { return k_[1]; }
-  const Elt& two() const { return k_[2]; }
-  const Elt& half() const { return half_; }
-  const Elt& mone() const { return mone_; }
+  const Elt &zero() const { return k_[0]; }
+  const Elt &one() const { return k_[1]; }
+  const Elt &two() const { return k_[2]; }
+  const Elt &half() const { return half_; }
+  const Elt &mone() const { return mone_; }
 
   Elt poly_evaluation_point(size_t i) const {
     check(i < kNPolyEvaluationPoints, "i < kNPolyEvaluationPoints");
@@ -362,7 +357,7 @@ class FpGeneric {
 
   // Convert a counter into *some* field element such that the counter is
   // zero (as a counter) iff the field element is zero.
-  Elt znz_indicator(const CElt& celt) const { return celt.e; }
+  Elt znz_indicator(const CElt &celt) const { return celt.e; }
 
   // dot product
   struct NatScaledForDot {
@@ -382,7 +377,7 @@ class FpGeneric {
     return Elt{reduce_nat(s)};
   }
 
- private:
+private:
   void maybe_minus_m(limb_t a[kLimbs], limb_t ah) const {
     limb_t a1[kLimbs];
     mov(kLimbs, a1, negm_.limb_);
@@ -396,7 +391,7 @@ class FpGeneric {
     cmovnz(kLimbs, a, ah, a1);
   }
 
-  void byhalf(Elt& a) const {
+  void byhalf(Elt &a) const {
     if (a.n.shiftr(1) != 0) {
       // the lost bit is a raw 1, not one() in Montgomery form,
       // hence we must add a raw 1/2, not half().
@@ -406,8 +401,8 @@ class FpGeneric {
 
   // unoptimized montgomery multiplication that does not
   // depend on the constants zero() and one() being defined.
-  void mul0(N& x, const Elt& y) const {
-    limb_t a[2 * kLimbs + 1];  // uninitialized
+  void mul0(N &x, const Elt &y) const {
+    limb_t a[2 * kLimbs + 1]; // uninitialized
     mulstep<true>(a, x.limb_[0], y.n.limb_);
     for (size_t i = 1; i < kLimbs; ++i) {
       mulstep<false>(a + i, x.limb_[i], y.n.limb_);
@@ -417,7 +412,7 @@ class FpGeneric {
   }
 
   template <bool first>
-  inline void mulstep(limb_t* a, limb_t x, const limb_t y[kLimbs]) const {
+  inline void mulstep(limb_t *a, limb_t x, const limb_t y[kLimbs]) const {
     if (kLimbs == 1) {
       // The general case (below) represents the (kLimbs+1)-word
       // product as L+(H<<bitsPerLimb), where in general L and H
@@ -446,7 +441,7 @@ class FpGeneric {
   // This method should only be used on static strings known at
   // compile time to be valid field elements.  We make it
   // private to prevent misuse.
-  Elt of_charp(const char* s) const {
+  Elt of_charp(const char *s) const {
     Elt a(k_[0]);
     Elt base = of_scalar(10);
     if (s[0] == '0' && (s[1] == 'x' || s[1] == 'X')) {
@@ -464,8 +459,7 @@ class FpGeneric {
 
   // Unscaled reduction of X into a Nat<W64>.  The result
   // must be multiplied by reduce_scale<WX>
-  template <size_t WX>
-  N reduce_nat(const Nat<WX>& x) const {
+  template <size_t WX> N reduce_nat(const Nat<WX> &x) const {
     constexpr size_t kLimbsX = Nat<WX>::kLimbs;
     limb_t a[kLimbs + kLimbsX + 1] = {};
     for (size_t i = 0; i < kLimbsX; ++i) {
@@ -479,15 +473,15 @@ class FpGeneric {
   }
 
   N negm_;
-  Elt rsquare_;  // 2^(kbits + kBits) mod p
+  Elt rsquare_; // 2^(kbits + kBits) mod p
   limb_t mprime_;
-  Elt k_[3];  // small constants
-  Elt half_;  // 1/2
+  Elt k_[3]; // small constants
+  Elt half_; // 1/2
   Elt raw_half_;
-  Elt mone_;  // minus one
+  Elt mone_; // minus one
   Elt poly_evaluation_points_[kNPolyEvaluationPoints];
   Elt inv_small_scalars_[kNPolyEvaluationPoints];
 };
-}  // namespace proofs
+} // namespace proofs
 
-#endif  // PRIVACY_PROOFS_ZK_LIB_ALGEBRA_FP_GENERIC_H_
+#endif // PRIVACY_PROOFS_ZK_LIB_ALGEBRA_FP_GENERIC_H_

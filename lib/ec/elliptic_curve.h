@@ -18,8 +18,8 @@
 #include <cstddef>
 #include <cstdint>
 
-#include "algebra/nat.h"
-#include "util/panic.h"
+#include "../algebra/nat.h"
+#include "../util/panic.h"
 
 namespace proofs {
 // Elliptic curve class that supports basic operations such as addition,
@@ -30,19 +30,18 @@ namespace proofs {
 // digits of the coordinate field prime in base-10 to name a curve.
 // The kN template parameter describes the number of bits in the curve
 // order, e.g., to handle curves like P-521, K-283, etc.
-template <class Field_, size_t W, size_t kN>
-class EllipticCurve {
- public:
+template <class Field_, size_t W, size_t kN> class EllipticCurve {
+public:
   using Field = Field_;
   using Elt = typename Field::Elt;
   using N = Nat<W>;
 
   static constexpr const size_t kBits = kN; /* # bits in size of the group */
 
-  const Field& f_;
+  const Field &f_;
   Elt a_;
   Elt b_;
-  Elt gx_, gy_, gz_;  // generator of the group
+  Elt gx_, gy_, gz_; // generator of the group
   const Elt k2, k3, k8, k3b, k9b, k24b;
 
   struct ECPoint {
@@ -51,23 +50,14 @@ class EllipticCurve {
     Elt z;
 
     ECPoint() = default;
-    ECPoint(const Elt& x, const Elt& y, const Elt& z) : x(x), y(y), z(z) {}
+    ECPoint(const Elt &x, const Elt &y, const Elt &z) : x(x), y(y), z(z) {}
   };
 
-  EllipticCurve(const Elt& a, const Elt& b, const Elt& gX, const Elt& gY,
-                const Field_& F)
-      : f_(F),
-        a_(a),
-        b_(b),
-        gx_(gX),
-        gy_(gY),
-        gz_(F.one()),
-        k2(F.of_scalar(2)),
-        k3(F.of_scalar(3)),
-        k8(F.of_scalar(8)),
-        k3b(F.mulf(k3, b_)),
-        k9b(F.mulf(F.of_scalar(9), b_)),
-        k24b(F.mulf(F.of_scalar(24), b_)) {
+  EllipticCurve(const Elt &a, const Elt &b, const Elt &gX, const Elt &gY,
+                const Field_ &F)
+      : f_(F), a_(a), b_(b), gx_(gX), gy_(gY), gz_(F.one()), k2(F.of_scalar(2)),
+        k3(F.of_scalar(3)), k8(F.of_scalar(8)), k3b(F.mulf(k3, b_)),
+        k9b(F.mulf(F.of_scalar(9), b_)), k24b(F.mulf(F.of_scalar(24), b_)) {
     is_minus_3_a_ = (a_ == F.negf(k3));
     is_zero_a_ = (a_ == F.zero());
   }
@@ -76,7 +66,7 @@ class EllipticCurve {
   // are valid points on the curve. Just verifying cross-mult is not
   // enough if one of the points is invalid. This method is not constant
   // time and can return early if any point is infinity.
-  bool equal(const ECPoint& p, const ECPoint& q) const {
+  bool equal(const ECPoint &p, const ECPoint &q) const {
     // handle inf point, then point equality, and finally projective eq
     if (q.x == f_.zero() && q.z == f_.zero() && q.y != f_.zero() &&
         p.x == f_.zero() && p.z == f_.zero() && p.y != f_.zero()) {
@@ -93,7 +83,7 @@ class EllipticCurve {
   // This method assumes a point is either zero or has z=1 coordinate,
   // so it does not implement the full mathematical notion of Jacobian-form
   // ec point.
-  bool is_on_curve(const ECPoint& p) const {
+  bool is_on_curve(const ECPoint &p) const {
     if (equal(p, zero())) {
       return true;
     }
@@ -106,30 +96,31 @@ class EllipticCurve {
 
   // This caller of the constructor must first verify that (x,y) is on the
   // curve using the isOnCurve() method.
-  ECPoint point(const Elt& x, const Elt& y) const {
+  ECPoint point(const Elt &x, const Elt &y) const {
     ECPoint p(x, y, f_.one());
     check(is_on_curve(p), "Invalid curve point");
     return p;
   }
 
-  void normalize(ECPoint& p) const {
-    if (p.z == f_.zero()) return;
+  void normalize(ECPoint &p) const {
+    if (p.z == f_.zero())
+      return;
     f_.invert(p.z);
     f_.mul(p.x, p.z);
     f_.mul(p.y, p.z);
     p.z = f_.one();
   }
 
-  void addE(ECPoint& p3, const ECPoint& p2) const {
+  void addE(ECPoint &p3, const ECPoint &p2) const {
     addE(p3.x, p3.y, p3.z, p3.x, p3.y, p3.z, p2.x, p2.y, p2.z);
   }
 
-  void doubleE(ECPoint& p3) const {
+  void doubleE(ECPoint &p3) const {
     doubleE(p3.x, p3.y, p3.z, p3.x, p3.y, p3.z);
   }
 
   // Functional interface.
-  ECPoint addEf(ECPoint p1, const ECPoint& p2) const {
+  ECPoint addEf(ECPoint p1, const ECPoint &p2) const {
     addE(p1, p2);
     return p1;
   }
@@ -142,7 +133,7 @@ class EllipticCurve {
   // Computes the elliptic curve point p * scalar.
   // This method is not constant time, but that is not necessary in the current
   // zk implementation.
-  ECPoint scalar_multf(const ECPoint& p, const N& scalar) const {
+  ECPoint scalar_multf(const ECPoint &p, const N &scalar) const {
     ECPoint x = p;
     ECPoint p3 = zero();
     for (size_t d = 0; d < N::kLimbs; ++d) {
@@ -176,17 +167,18 @@ class EllipticCurve {
   ECPoint generator() const { return ECPoint(gx_, gy_, gz_); }
 
   // Check whether Y^2 = X^3 + aX + b.
-  bool is_on_curve(const Elt& X, const Elt& Y) const {
+  bool is_on_curve(const Elt &X, const Elt &Y) const {
     Elt left = f_.mulf(Y, Y);
     Elt X3 = f_.mulf(X, f_.mulf(X, X));
     Elt right = f_.addf(f_.addf(X3, f_.mulf(a_, X)), b_);
     return left == right;
   }
 
-  void addE(Elt& X3o, Elt& Y3o, Elt& Z3o, const Elt& X1, const Elt& Y1,
-            const Elt& Z1, const Elt& X2, const Elt& Y2, const Elt& Z2) const {
+  void addE(Elt &X3o, Elt &Y3o, Elt &Z3o, const Elt &X1, const Elt &Y1,
+            const Elt &Z1, const Elt &X2, const Elt &Y2, const Elt &Z2) const {
     // Optimized special cases.
-    if (is_zero_a_) return addEZeroA(X3o, Y3o, Z3o, X1, Y1, Z1, X2, Y2, Z2);
+    if (is_zero_a_)
+      return addEZeroA(X3o, Y3o, Z3o, X1, Y1, Z1, X2, Y2, Z2);
     if (is_minus_3_a_)
       return addEMinus3A(X3o, Y3o, Z3o, X1, Y1, Z1, X2, Y2, Z2);
 
@@ -246,11 +238,13 @@ class EllipticCurve {
     Z3o = Z3;
   }
 
-  void doubleE(Elt& X3o, Elt& Y3o, Elt& Z3o, const Elt& X, const Elt& Y,
-               const Elt& Z) const {
+  void doubleE(Elt &X3o, Elt &Y3o, Elt &Z3o, const Elt &X, const Elt &Y,
+               const Elt &Z) const {
     // Optimized special cases.
-    if (is_zero_a_) return doubleEZeroA(X3o, Y3o, Z3o, X, Y, Z);
-    if (is_minus_3_a_) return doubleEMinus3A(X3o, Y3o, Z3o, X, Y, Z);
+    if (is_zero_a_)
+      return doubleEZeroA(X3o, Y3o, Z3o, X, Y, Z);
+    if (is_minus_3_a_)
+      return doubleEMinus3A(X3o, Y3o, Z3o, X, Y, Z);
 
     /*
     // 1998 Cohen–Miyaji–Ono "Efficient elliptic curve exponentiation using
@@ -296,7 +290,7 @@ class EllipticCurve {
     Z3o = Z3;
   }
 
- private:
+private:
   /* From Algorithm 7: Complete, projective point addition for prime order
     j-invariant 0 short Weierstrass curves E/Fq : y^2 = x^3 + b.
 
@@ -304,9 +298,9 @@ class EllipticCurve {
     Y3 = (Y1 Y2 + 3b Z1 Z2)(Y1 Y2 - 3b Z1 Z2) + 9b X1 X2 (X1 Z2 + X2 Z1)
     Z3 = (Y1 Z2 + Y2 Z1)(Y1 Y2 + 3b Z1 Z2) + 3 X1 X2(X1 Y2 + X2 Y1)
    */
-  void addEZeroA(Elt& X3o, Elt& Y3o, Elt& Z3o, const Elt& X1, const Elt& Y1,
-                 const Elt& Z1, const Elt& X2, const Elt& Y2,
-                 const Elt& Z2) const {
+  void addEZeroA(Elt &X3o, Elt &Y3o, Elt &Z3o, const Elt &X1, const Elt &Y1,
+                 const Elt &Z1, const Elt &X2, const Elt &Y2,
+                 const Elt &Z2) const {
     Elt t0 = f_.mulf(X2, Y1);
     Elt t1 = f_.mulf(X1, Y2);
     Elt t2 = f_.addf(t1, t0);
@@ -331,9 +325,9 @@ class EllipticCurve {
   /*Algorithm 4: Complete, projective point addition for prime order short
    * Weierstrass curves E/Fq : y^2 = x^33 + ax + b with a = −3.
    */
-  void addEMinus3A(Elt& X3o, Elt& Y3o, Elt& Z3o, const Elt& X1, const Elt& Y1,
-                   const Elt& Z1, const Elt& X2, const Elt& Y2,
-                   const Elt& Z2) const {
+  void addEMinus3A(Elt &X3o, Elt &Y3o, Elt &Z3o, const Elt &X1, const Elt &Y1,
+                   const Elt &Z1, const Elt &X2, const Elt &Y2,
+                   const Elt &Z2) const {
     Elt t0 = f_.mulf(X1, X2);
     Elt t1 = f_.mulf(Y1, Y2);
     Elt t2 = f_.mulf(Z1, Z2);
@@ -386,8 +380,8 @@ class EllipticCurve {
   /* From Algorithm 6: Exception-free point doubling for prime order short
    * Weierstrass curves E/Fq : y^2 = x^3 + ax + b with a = −3.
    */
-  void doubleEMinus3A(Elt& X3o, Elt& Y3o, Elt& Z3o, const Elt& X, const Elt& Y,
-                      const Elt& Z) const {
+  void doubleEMinus3A(Elt &X3o, Elt &Y3o, Elt &Z3o, const Elt &X, const Elt &Y,
+                      const Elt &Z) const {
     Elt t0 = f_.mulf(X, X);
     Elt t1 = f_.mulf(Y, Y);
     Elt t2 = f_.mulf(Z, Z);
@@ -435,16 +429,16 @@ class EllipticCurve {
     Y3 = (YY − 9bZZ)(YY + 3bZZ) + 24bYYZZ
     Z3 = 8YYYZ.
   */
-  void doubleEZeroA(Elt& X3o, Elt& Y3o, Elt& Z3o, const Elt& X, const Elt& Y,
-                    const Elt& Z) const {
+  void doubleEZeroA(Elt &X3o, Elt &Y3o, Elt &Z3o, const Elt &X, const Elt &Y,
+                    const Elt &Z) const {
     Elt t0 = f_.mulf(X, Y);
     Elt t1 = f_.mulf(Y, Y);
     Elt t2 = f_.mulf(Z, Z);
     Elt t4 = f_.mulf(Y, Z);
-    Elt t5 = f_.mulf(k9b, t2);  // 9bZZ
-    Elt t6 = f_.subf(t1, t5);   // YY - 9bZZ
-    Elt t7 = f_.mulf(k3b, t2);  // 3bZZ
-    Elt t8 = f_.addf(t1, t7);   // YY + 3bZZ
+    Elt t5 = f_.mulf(k9b, t2); // 9bZZ
+    Elt t6 = f_.subf(t1, t5);  // YY - 9bZZ
+    Elt t7 = f_.mulf(k3b, t2); // 3bZZ
+    Elt t8 = f_.addf(t1, t7);  // YY + 3bZZ
     X3o = f_.mulf(k2, f_.mulf(t0, t6));
     Y3o = f_.addf(f_.mulf(t6, t8), f_.mulf(k24b, f_.mulf(t1, t2)));
     Z3o = f_.mulf(k8, f_.mulf(t1, t4));
@@ -510,8 +504,8 @@ class EllipticCurve {
   // Warning: tp and ts MUST NOT be references to p[i] and s[i], since
   // the algorithm overwrites the p and s arrays.  This complication
   // ensues because we are trying to avoid unnecessary copies.
-  void bury(size_t i, size_t n, ECPoint p[/*n*/], N s[/*n*/], const ECPoint& tp,
-            const N& ts) const {
+  void bury(size_t i, size_t n, ECPoint p[/*n*/], N s[/*n*/], const ECPoint &tp,
+            const N &ts) const {
     while (2 * i < n) {
       // at least one child
       size_t cld = 2 * i;
@@ -591,6 +585,6 @@ class EllipticCurve {
   bool is_zero_a_;
   bool is_minus_3_a_;
 };
-}  // namespace proofs
+} // namespace proofs
 
-#endif  // PRIVACY_PROOFS_ZK_LIB_EC_ELLIPTIC_CURVE_H_
+#endif // PRIVACY_PROOFS_ZK_LIB_EC_ELLIPTIC_CURVE_H_

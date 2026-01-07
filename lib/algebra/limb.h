@@ -19,7 +19,7 @@
 #include <cstddef>
 #include <cstdint>
 
-#include "util/serialization.h"
+#include "../util/serialization.h"
 
 namespace proofs {
 
@@ -27,9 +27,8 @@ namespace proofs {
 // machine-dependent "limbs".  The serialization is in this
 // class; arithmetic is in subclasses.
 
-template <size_t W64>
-class Limb {
- public:
+template <size_t W64> class Limb {
+public:
   using T = Limb<W64>;
 
 #if __WORDSIZE == 64
@@ -50,10 +49,10 @@ class Limb {
 
   limb_t limb_[kLimbs];
 
-  Limb() = default;  // uninitialized
+  Limb() = default; // uninitialized
   explicit Limb(uint64_t x) : limb_{} { assign(limb_, 1, &x); }
 
-  explicit Limb(const std::array<uint64_t, kU64>& a) : limb_{} {
+  explicit Limb(const std::array<uint64_t, kU64> &a) : limb_{} {
     assign(limb_, kU64, &a[0]);
   }
 
@@ -69,7 +68,7 @@ class Limb {
     }
   }
 
-  bool operator==(const T& other) const {
+  bool operator==(const T &other) const {
     for (size_t i = 0; i < kLimbs; ++i) {
       if (limb_[i] != other.limb_[i]) {
         return false;
@@ -77,7 +76,7 @@ class Limb {
     }
     return true;
   }
-  bool operator!=(const T& other) const { return !(operator==(other)); }
+  bool operator!=(const T &other) const { return !(operator==(other)); }
 
   // Shift right by z.  Return the bits that fall off
   // the edge.
@@ -101,7 +100,7 @@ class Limb {
     return 0;
   }
 
- protected:
+protected:
   static void assign(uint64_t d[], size_t ns, const uint64_t s[/*ns*/]) {
     for (size_t i = 0; i < ns; ++i) {
       d[i] = s[i];
@@ -127,24 +126,24 @@ class Limb {
     }
   }
 
-  static const uint8_t* of_bytes(uint64_t* r, const uint8_t* a) {
+  static const uint8_t *of_bytes(uint64_t *r, const uint8_t *a) {
     *r = u64_of_le(a);
     return a + 8;
   }
-  static const uint8_t* of_bytes(uint32_t* r, const uint8_t* a) {
+  static const uint8_t *of_bytes(uint32_t *r, const uint8_t *a) {
     *r = u32_of_le(a);
     return a + 4;
   }
 
-  static uint8_t* to_bytes(const uint64_t* r, uint8_t* a) {
+  static uint8_t *to_bytes(const uint64_t *r, uint8_t *a) {
     u64_to_le(a, *r);
     return a + 8;
   }
-  static uint8_t* to_bytes(const uint32_t* r, uint8_t* a) {
+  static uint8_t *to_bytes(const uint32_t *r, uint8_t *a) {
     u32_to_le(a, *r);
     return a + 4;
   }
 };
-}  // namespace proofs
+} // namespace proofs
 
-#endif  // PRIVACY_PROOFS_ZK_LIB_ALGEBRA_LIMB_H_
+#endif // PRIVACY_PROOFS_ZK_LIB_ALGEBRA_LIMB_H_
