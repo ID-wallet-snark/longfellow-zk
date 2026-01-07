@@ -35,6 +35,7 @@ struct AppState {
   // Proof settings
   bool prove_age = true;
   bool prove_nationality = false;
+  bool prove_sex = false;
   bool prove_french_license = false;
   
   // Health Pass / Issuer Settings
@@ -51,6 +52,7 @@ struct AppState {
   bool prove_category_C = false;
 
   int age_threshold = 18;
+  int selected_sex = 0;  // 0: Male, 1: Female
 
   // Calculated age based on birth date
   int calculated_age = 19;
@@ -219,6 +221,7 @@ void GenerateZKProofAsync(AppState &state) {
   config.birth_day = state.birth_day;
   config.prove_age = state.prove_age;
   config.prove_nationality = state.prove_nationality;
+  config.prove_sex = state.prove_sex;
   config.prove_french_license = state.prove_french_license;
   config.prove_health_issuer = state.prove_health_issuer;
   config.prove_vaccine = state.prove_vaccine;
@@ -230,6 +233,7 @@ void GenerateZKProofAsync(AppState &state) {
   config.prove_category_C = state.prove_category_C;
   config.age_threshold = state.age_threshold;
   config.selected_nationality = state.selected_nationality;
+  config.selected_sex = state.selected_sex;
   config.circuit_cache_1attr = &state.circuit_cache_1attr;
   config.circuit_cache_2attr = &state.circuit_cache_2attr;
 
@@ -581,6 +585,47 @@ void RenderMainWindow(AppState &state) {
         
         ImGui::Spacing();
         ImGui::TextDisabled("* Demo Note: Uses 'height' as proxy for B-Category");
+        ImGui::Unindent(10);
+        ImGui::Spacing();
+      }
+      ImGui::PopStyleColor();
+      ImGui::EndTabItem();
+    }
+    
+    // TAB 4: Gender Verification
+    if (ImGui::BeginTabItem("Gender Verification")) {
+      state.prove_sex = true;
+      state.prove_age = false;
+      state.prove_nationality = false;
+      state.prove_french_license = false;
+      state.prove_health_issuer = false;
+
+      ImGui::Spacing();
+      ImGui::TextColored(state.accent_color, "Gender Verification");
+      ImGui::TextWrapped("Prove your sex/gender using Zero-Knowledge proofs without revealing other personal information.");
+      ImGui::Spacing();
+      ImGui::Separator();
+      ImGui::Spacing();
+
+      ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.15f, 0.16f, 0.20f, 1.0f));
+      if (ImGui::CollapsingHeader("Sex Selection", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Indent(10);
+        ImGui::Spacing();
+        
+        const char* sex_options[] = { "Male (M)", "Female (F)" };
+        ImGui::Text("Select sex attribute to prove:");
+        ImGui::Spacing();
+        ImGui::Combo("##SexCombo", &state.selected_sex, sex_options, IM_ARRAYSIZE(sex_options));
+        
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+        
+        ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "Privacy Guarantee:");
+        ImGui::TextWrapped("The ZK proof will only reveal that your sex matches the selected value. No other personal data (name, birth date, document number) is disclosed.");
+        
+        ImGui::Spacing();
+        ImGui::TextDisabled("* Note: Only binary sex values (M/F) are supported as per ISO 18013-5 standard");
         ImGui::Unindent(10);
         ImGui::Spacing();
       }
