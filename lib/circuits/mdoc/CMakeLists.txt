@@ -74,6 +74,12 @@ target_link_libraries(student_verifier mdoc_static)
 # proofs_add_testing_libraries(student_verifier) # No GTest
 target_link_libraries(student_verifier crypto zstd)
 
+
+add_executable(student_card_test student_card_test.cc)
+target_link_libraries(student_card_test mdoc_static)
+proofs_add_testing_libraries(student_card_test)
+target_link_libraries(student_card_test crypto zstd)
+
 set(installable_libs mdoc_static)
 install(TARGETS ${installable_libs} DESTINATION lib)
 install(FILES mdoc_zk.h DESTINATION include)
