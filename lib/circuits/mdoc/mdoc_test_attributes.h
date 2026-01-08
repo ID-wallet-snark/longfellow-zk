@@ -206,6 +206,36 @@ static const RequestedAttribute category_B_proxy = {
     .cbor_value_len = 2,
     .verification_type = 0};
 
+// French Student Card attributes
+static const RequestedAttribute student_family_name = {
+    .namespace_id = {'f', 'r', '.', 'g', 'o', 'u', 'v', '.', 'e', 'd', 'u', 'c',
+                     'a', 't', 'i', 'o', 'n', '.', '1'},
+    .id = {'f', 'a', 'm', 'i', 'l', 'y', '_', 'n', 'a', 'm', 'e'},
+    .cbor_value = {0x6A, 'M', 'u', 's', 't', 'e', 'r', 'm', 'a', 'n', 'n'},
+    .namespace_len = 19,
+    .id_len = 11,
+    .cbor_value_len = 11};
+
+static const RequestedAttribute student_given_name = {
+    .namespace_id = {'f', 'r', '.', 'g', 'o', 'u', 'v', '.', 'e', 'd', 'u', 'c',
+                     'a', 't', 'i', 'o', 'n', '.', '1'},
+    .id = {'g', 'i', 'v', 'e', 'n', '_', 'n', 'a', 'm', 'e'},
+    .cbor_value = {0x65, 'E', 'r', 'i', 'k', 'a'},
+    .namespace_len = 19,
+    .id_len = 10,
+    .cbor_value_len = 6};
+
+static const RequestedAttribute student_birth_date = {
+    .namespace_id = {'f', 'r', '.', 'g', 'o', 'u', 'v', '.', 'e', 'd', 'u', 'c',
+                     'a', 't', 'i', 'o', 'n', '.', '1'},
+    .id = {'b', 'i', 'r', 't', 'h', '_', 'd', 'a', 't', 'e'},
+    .cbor_value = {0xD9, 0x03, 0xEC, 0x6A, '1', '9', '9', '8', '-', '0', '9',
+                   '-', '0', '4'},
+    .namespace_len = 19,
+    .id_len = 10,
+    .cbor_value_len = 14};
+
+
 // Student Status Attribute
 static const RequestedAttribute is_student = {
     .namespace_id = {'f', 'r', '.', 'g', 'o', 'u', 'v', '.', 'e', 'd', 'u', 'c',

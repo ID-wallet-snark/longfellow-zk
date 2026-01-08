@@ -74,6 +74,12 @@ target_link_libraries(student_verifier mdoc_static)
 # proofs_add_testing_libraries(student_verifier) # No GTest
 target_link_libraries(student_verifier crypto zstd)
 
+
+add_executable(student_card_test student_card_test.cc)
+target_link_libraries(student_card_test mdoc_static)
+proofs_add_testing_libraries(student_card_test)
+target_link_libraries(student_card_test crypto zstd)
+
 set(installable_libs mdoc_static)
 install(TARGETS ${installable_libs} DESTINATION lib)
 install(FILES mdoc_zk.h DESTINATION include)
@@ -139,6 +145,11 @@ set_target_properties(mdoc_attribute_test PROPERTIES CXX_STANDARD 17)
 add_executable(smart_age_test smart_age_test.cc)
 target_link_libraries(smart_age_test mdoc_static testing_main crypto zstd)
 set_target_properties(smart_age_test PROPERTIES CXX_STANDARD 17)
+
+# Student card benchmark
+add_executable(student_card_bench student_card_bench.cc)
+target_link_libraries(student_card_bench mdoc_static testing_main benchmark::benchmark crypto zstd)
+set_target_properties(student_card_bench PROPERTIES CXX_STANDARD 17)
 
 
 
