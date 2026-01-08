@@ -56,7 +56,7 @@ Nat nat_from_hash(const uint8_t data[], size_t len) {
 }
 
 
-template <typename EC, typename Field, class ScalarField>
+template <typename EC, typename Field, class ScalarField, size_t kMaxSHABlocks = 3>
 class PtrCredWitness {
   using ECField = typename EC::Field;
   using ECElt = typename ECField::Elt;
@@ -64,7 +64,6 @@ class PtrCredWitness {
   using Elt = typename Field::Elt;
   using Nat = typename Field::N;
   using EcdsaWitness = VerifyWitness3<EC, ScalarField>;
-  static constexpr size_t kMaxSHABlocks = 3;
 
  public:
   const EC ec_;

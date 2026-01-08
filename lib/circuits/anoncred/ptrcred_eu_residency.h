@@ -41,7 +41,7 @@ class PtrCredEUResidency {
   using v32 = typename LogicCircuit::v32;
   using BitW = typename LogicCircuit::BitW;
   static constexpr size_t kIndexBits = 5;
-  static constexpr size_t kMaxSHABlocks = 3;
+  static constexpr size_t kMaxSHABlocks = 9;
   static constexpr size_t kMaxMsoLen = kMaxSHABlocks * 64 - 9;
 
   using vind = typename LogicCircuit::template bitvec<kIndexBits>;

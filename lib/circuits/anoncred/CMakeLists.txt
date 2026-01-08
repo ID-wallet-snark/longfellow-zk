@@ -53,5 +53,7 @@ target_link_libraries(ptrcred_eu_residency_test
   util
   gtest_main
   gtest
+  benchmark_main
+  benchmark
 )
 
