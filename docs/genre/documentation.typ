@@ -1,5 +1,4 @@
 #import "@preview/cetz:0.2.2": canvas, draw, tree
-#import "@preview/fletcher:0.5.0" as fletcher: diagram, node, edge
 
 #set document(
   title: "Vérification d'Identité de Genre par ZK-SNARK",
@@ -94,22 +93,35 @@ Cette implémentation respecte :
 
 Le système Longfellow-ZK pour la vérification de genre comprend trois composants principaux :
 
-#figure(
-  diagram(
-    node-stroke: 1pt,
-    edge-stroke: 1pt,
-    node((0, 0), [*Utilisateur*], corner-radius: 5pt, fill: rgb("#e3f2fd")),
-    node((0, -2), [*Circuit ZK*], corner-radius: 5pt, fill: rgb("#fff3e0")),
-    node((-2, -4), [*Prover*], corner-radius: 5pt, fill: rgb("#f3e5f5")),
-    node((2, -4), [*Verifier*], corner-radius: 5pt, fill: rgb("#e8f5e9")),
-    
-    edge((0, 0), (0, -2), [mDoc + Attribut], "->"),
-    edge((0, -2), (-2, -4), [Génération], "->"),
-    edge((0, -2), (2, -4), [Vérification], "->"),
-    edge((-2, -4), (2, -4), [Preuve ZK], "=>", bend: -30deg),
-  ),
-  caption: "Architecture du système de vérification"
-)
+#align(center)[
+#box(
+  width: 80%,
+  stroke: 1pt,
+  inset: 15pt,
+  radius: 5pt,
+)[
+```
+           ┌─────────────┐
+           │ Utilisateur │
+           └──────┬──────┘
+                  │ mDoc + Attribut
+                  ▼
+           ┌─────────────┐
+           │ Circuit ZK  │
+           └──────┬──────┘
+                  │
+         ┌────────┴────────┐
+         ▼                 ▼
+    ┌────────┐        ┌──────────┐
+    │ Prover │══════▶│ Verifier │
+    └────────┘        └──────────┘
+     Génération        Vérification
+                Preuve ZK
+```
+]
+]
+
+_Figure : Architecture du système de vérification_
 
 == Composants Logiciels
 
@@ -140,24 +152,46 @@ gui/
 
 == Processus de Génération de Preuve
 
-#figure(
-  diagram(
-    node-stroke: 1pt,
-    spacing: (8em, 2em),
-    
-    node((0, 0), [Sélection Genre], corner-radius: 5pt, fill: rgb("#e3f2fd")),
-    node((0, 1), [Création Attribut], corner-radius: 5pt, fill: rgb("#fff3e0")),
-    node((0, 2), [Compilation Circuit], corner-radius: 5pt, fill: rgb("#f3e5f5")),
-    node((0, 3), [Génération Preuve], corner-radius: 5pt, fill: rgb("#ffe0b2")),
-    node((0, 4), [Preuve ZK-SNARK], corner-radius: 5pt, fill: rgb("#c8e6c9")),
-    
-    edge((0, 0), (0, 1), [M ou F], "->"),
-    edge((0, 1), (0, 2), [CBOR], "->"),
-    edge((0, 2), (0, 3), [~30-60s], "->"),
-    edge((0, 3), (0, 4), [Succès], "->"),
-  ),
-  caption: "Flux de génération de preuve ZK"
-)
+#align(center)[
+#box(
+  width: 60%,
+  stroke: 1pt,
+  inset: 15pt,
+  radius: 5pt,
+)[
+```
+  ┌──────────────────┐
+  │ Sélection Genre  │
+  │    (M ou F)      │
+  └────────┬─────────┘
+           │
+           ▼
+  ┌──────────────────┐
+  │ Création         │
+  │ Attribut CBOR    │
+  └────────┬─────────┘
+           │
+           ▼
+  ┌──────────────────┐
+  │ Compilation      │
+  │ Circuit (~30-60s)│
+  └────────┬─────────┘
+           │
+           ▼
+  ┌──────────────────┐
+  │ Génération       │
+  │ Preuve ZK-SNARK  │
+  └────────┬─────────┘
+           │
+           ▼
+  ┌──────────────────┐
+  │ ✓ Preuve prête   │
+  └──────────────────┘
+```
+]
+]
+
+_Figure : Flux de génération de preuve ZK_
 
 Le processus détaillé est le suivant :
 
@@ -169,26 +203,47 @@ Le processus détaillé est le suivant :
 
 == Processus de Vérification
 
-#figure(
-  diagram(
-    node-stroke: 1pt,
-    spacing: (8em, 2em),
-    
-    node((0, 0), [Réception Preuve], corner-radius: 5pt, fill: rgb("#e3f2fd")),
-    node((0, 1), [Décompression Circuit], corner-radius: 5pt, fill: rgb("#fff3e0")),
-    node((0, 2), [Vérification ECDSA], corner-radius: 5pt, fill: rgb("#f3e5f5")),
-    node((0, 3), [Validation ZK], corner-radius: 5pt, fill: rgb("#ffe0b2")),
-    node((-1.5, 4), [✓ Accepté], corner-radius: 5pt, fill: rgb("#c8e6c9")),
-    node((1.5, 4), [✗ Rejeté], corner-radius: 5pt, fill: rgb("#ffcdd2")),
-    
-    edge((0, 0), (0, 1), "->"),
-    edge((0, 1), (0, 2), "->"),
-    edge((0, 2), (0, 3), "->"),
-    edge((0, 3), (-1.5, 4), [Valide], "->"),
-    edge((0, 3), (1.5, 4), [Invalide], "->"),
-  ),
-  caption: "Flux de vérification de preuve"
-)
+#align(center)[
+#box(
+  width: 60%,
+  stroke: 1pt,
+  inset: 15pt,
+  radius: 5pt,
+)[
+```
+  ┌──────────────────┐
+  │ Réception Preuve │
+  └────────┬─────────┘
+           │
+           ▼
+  ┌──────────────────┐
+  │ Décompression    │
+  │ Circuit          │
+  └────────┬─────────┘
+           │
+           ▼
+  ┌──────────────────┐
+  │ Vérification     │
+  │ ECDSA            │
+  └────────┬─────────┘
+           │
+           ▼
+  ┌──────────────────┐
+  │ Validation       │
+  │ ZK-SNARK         │
+  └────────┬─────────┘
+           │
+      ┌────┴────┐
+      ▼         ▼
+  ┌────┐     ┌────┐
+  │ ✓  │     │ ✗  │
+  └────┘     └────┘
+  Accepté    Rejeté
+```
+]
+]
+
+_Figure : Flux de vérification de preuve_
 
 #pagebreak()
 
@@ -277,27 +332,27 @@ L'interface graphique propose un onglet dédié avec :
 ║  🔐 Gender Verification                        ║
 ╠════════════════════════════════════════════════╣
 ║                                                ║
-║  Prove your sex/gender using Zero-Knowledge   ║
+║  Prove your sex/gender using Zero-Knowledge    ║
 ║  proofs without revealing other personal       ║
 ║  information.                                  ║
 ║                                                ║
-║  ┌─────────────────────────────────────────┐  ║
-║  │ Sex Selection                            │  ║
-║  ├─────────────────────────────────────────┤  ║
-║  │                                          │  ║
-║  │  Select sex attribute to prove:         │  ║
-║  │                                          │  ║
-║  │  ┌──────────────────────────┐           │  ║
-║  │  │ Male (M)            ▼    │           │  ║
-║  │  └──────────────────────────┘           │  ║
-║  │                                          │  ║
-║  │  Privacy Guarantee:                     │  ║
-║  │  Only sex matches selection. No other   │  ║
-║  │  personal data disclosed.               │  ║
-║  │                                          │  ║
-║  └─────────────────────────────────────────┘  ║
+║  ┌─────────────────────────────────────────┐   ║
+║  │ Sex Selection                           │   ║
+║  ├─────────────────────────────────────────┤   ║
+║  │                                         │   ║
+║  │  Select sex attribute to prove:         │   ║
+║  │                                         │   ║
+║  │  ┌──────────────────────────┐           │   ║
+║  │  │ Male (M)            ▼    │           │   ║
+║  │  └──────────────────────────┘           │   ║
+║  │                                         │   ║
+║  │  Privacy Guarantee:                     │   ║
+║  │  Only sex matches selection. No other   │   ║
+║  │  personal data disclosed.               │   ║
+║  │                                         │   ║
+║  └─────────────────────────────────────────┘   ║
 ║                                                ║
-║  [        GENERATE PROOF        ]             ║
+║  [        GENERATE PROOF        ]              ║
 ║                                                ║
 ╚════════════════════════════════════════════════╝
 ```
