@@ -138,6 +138,11 @@ add_executable(memory_benchmark memory_benchmark.cc)
 target_link_libraries(memory_benchmark mdoc_static testing_main benchmark::benchmark crypto zstd)
 set_target_properties(memory_benchmark PROPERTIES CXX_STANDARD 17)
 
+# Student card benchmark
+add_executable(student_card_bench student_card_bench.cc)
+target_link_libraries(student_card_bench mdoc_static testing_main benchmark::benchmark crypto zstd)
+set_target_properties(student_card_bench PROPERTIES CXX_STANDARD 17)
+
 
 
 

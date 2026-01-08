@@ -293,7 +293,7 @@ constexpr MdocAttribute kMdocAttributes[] = {
     {"family_name", kFRStudent1Namespace},
     {"given_name", kFRStudent1Namespace},
     {"birth_date", kFRStudent1Namespace},
-    {"is_student", kFRStudent1Namespace},
+    {"is_student", kFRStudent1Namespace}, // Pour validern on verifira l'universite, le numero de carte et l'expiration de la carte
     // Pour valider le statut etudiant, il faut numeriser les attributs d’une carte etudiante officielle
     // {"student_card_number", kFRStudent1Namespace},
     // {"student_card_expiry_date", kFRStudent1Namespace},
