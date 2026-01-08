@@ -97,40 +97,48 @@ set_target_properties(gentestmdoc PROPERTIES CXX_STANDARD 17)
 
 add_executable(mdoc_benchmark mdoc_benchmark.cc)
 # Note: gtest is provided via testing_main
-target_link_libraries(mdoc_benchmark mdoc_static testing_main benchmark::benchmark crypto zstd)
+target_link_libraries(mdoc_benchmark mdoc_static benchmark::benchmark gtest crypto zstd)
 set_target_properties(mdoc_benchmark PROPERTIES CXX_STANDARD 17)
 
 # Separate benchmark executables for different mDoc attributes
 add_executable(age_over_18_benchmark age_over_18_benchmark.cc)
-target_link_libraries(age_over_18_benchmark mdoc_static testing_main benchmark::benchmark crypto zstd)
+target_link_libraries(age_over_18_benchmark mdoc_static benchmark::benchmark gtest crypto zstd)
 set_target_properties(age_over_18_benchmark PROPERTIES CXX_STANDARD 17)
 
 add_executable(height_benchmark height_benchmark.cc)
-target_link_libraries(height_benchmark mdoc_static testing_main benchmark::benchmark crypto zstd)
+target_link_libraries(height_benchmark mdoc_static benchmark::benchmark gtest crypto zstd)
 set_target_properties(height_benchmark PROPERTIES CXX_STANDARD 17)
 
 add_executable(birthdate_benchmark birthdate_benchmark.cc)
-target_link_libraries(birthdate_benchmark mdoc_static testing_main benchmark::benchmark crypto zstd)
+target_link_libraries(birthdate_benchmark mdoc_static benchmark::benchmark gtest crypto zstd)
 set_target_properties(birthdate_benchmark PROPERTIES CXX_STANDARD 17)
 
 add_executable(driving_license_benchmark driving_license_benchmark.cc)
-target_link_libraries(driving_license_benchmark mdoc_static testing_main benchmark::benchmark crypto zstd)
+target_link_libraries(driving_license_benchmark mdoc_static benchmark::benchmark gtest crypto zstd)
 set_target_properties(driving_license_benchmark PROPERTIES CXX_STANDARD 17)
 
 # Multi-attribute scalability benchmark
 add_executable(multi_attribute_benchmark multi_attribute_benchmark.cc)
-target_link_libraries(multi_attribute_benchmark mdoc_static testing_main benchmark::benchmark crypto zstd)
+target_link_libraries(multi_attribute_benchmark mdoc_static benchmark::benchmark gtest crypto zstd)
 set_target_properties(multi_attribute_benchmark PROPERTIES CXX_STANDARD 17)
 
 # Multi-document comparison benchmark
 add_executable(multi_document_benchmark multi_document_benchmark.cc)
-target_link_libraries(multi_document_benchmark mdoc_static testing_main benchmark::benchmark crypto zstd)
+target_link_libraries(multi_document_benchmark mdoc_static benchmark::benchmark gtest crypto zstd)
 set_target_properties(multi_document_benchmark PROPERTIES CXX_STANDARD 17)
 
 # Memory profiling benchmark
 add_executable(memory_benchmark memory_benchmark.cc)
-target_link_libraries(memory_benchmark mdoc_static testing_main benchmark::benchmark crypto zstd)
+target_link_libraries(memory_benchmark mdoc_static benchmark::benchmark gtest crypto zstd)
 set_target_properties(memory_benchmark PROPERTIES CXX_STANDARD 17)
+
+add_executable(mdoc_attribute_test mdoc_attribute_test.cc)
+target_link_libraries(mdoc_attribute_test mdoc_static testing_main crypto zstd)
+set_target_properties(mdoc_attribute_test PROPERTIES CXX_STANDARD 17)
+
+add_executable(smart_age_test smart_age_test.cc)
+target_link_libraries(smart_age_test mdoc_static testing_main crypto zstd)
+set_target_properties(smart_age_test PROPERTIES CXX_STANDARD 17)
 
 
 

@@ -21,7 +21,7 @@
 namespace proofs {
 
 /* Max number of SHA blocks to process. */
-constexpr static const size_t kMaxSHABlocks = 35;
+constexpr static const size_t kMaxSHABlocks = 128;
 
 /* Number of bits in CBOR index. Must be large enough to index into MDOC.*/
 constexpr static const size_t kCborIndexBits = 12;
@@ -72,6 +72,6 @@ static constexpr uint8_t kOrgID[kOrgLen] = {'o', 'r', 'g', '.', 'i', 's',
                                             'o', '.', '1', '8', '0', '1',
                                             '3', '.', '5', '.', '1'};
 
-}  // namespace proofs
+} // namespace proofs
 
-#endif  // PRIVACY_PROOFS_ZK_LIB_CIRCUITS_MDOC_MDOC_CONSTANTS_H_
+#endif // PRIVACY_PROOFS_ZK_LIB_CIRCUITS_MDOC_MDOC_CONSTANTS_H_

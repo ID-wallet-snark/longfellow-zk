@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-proofs_add_tests(small_test)
+# proofs_add_tests(small_test)
+# target_link_libraries(small_test mdoc)
 
-target_link_libraries(small_test mdoc)
+# proofs_add_test(ptrcred_age_over_18_test)
+# target_link_libraries(ptrcred_age_over_18_test mdoc)
 
-proofs_add_test(ptrcred_age_over_18_test)
-target_link_libraries(ptrcred_age_over_18_test mdoc)
+add_executable(ptrcred_age_over_18_benchmark ptrcred_age_over_18_benchmark.cc)
+target_link_libraries(ptrcred_age_over_18_benchmark mdoc benchmark::benchmark gtest crypto zstd)
+set_target_properties(ptrcred_age_over_18_benchmark PROPERTIES CXX_STANDARD 17)

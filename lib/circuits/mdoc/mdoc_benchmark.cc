@@ -169,5 +169,93 @@ void BM_Verifier(benchmark::State &state) {
 }
 BENCHMARK(BM_Verifier);
 
+// Benchmark for Smart Age Verification (LEQ: Over 18 smart check)
+void BM_SmartAge_LEQ(benchmark::State &state) {
+  uint8_t *circuit = nullptr;
+  size_t circuit_len = 0;
+  if (generate_circuit(&kZkSpecs[0], &circuit, &circuit_len) !=
+      CIRCUIT_GENERATION_SUCCESS) {
+    state.SkipWithError("Circuit generation failed in setup");
+    return;
+  }
+
+  // Use mdoc_tests[3] (Born 1998)
+  const MdocTests *test_data = &mdoc_tests[3];
+  RequestedAttribute attrs[] = {test::proof_age_over_18_limit_2008};
+  uint8_t *zkproof = nullptr;
+  size_t proof_len = 0;
+
+  for (auto _ : state) {
+    state.PauseTiming();
+    if (zkproof) {
+      free(zkproof);
+      zkproof = nullptr;
+    }
+    state.ResumeTiming();
+
+    MdocProverErrorCode ret = run_mdoc_prover(
+        circuit, circuit_len, test_data->mdoc, test_data->mdoc_size,
+        test_data->pkx.as_pointer, test_data->pky.as_pointer,
+        test_data->transcript, test_data->transcript_size, attrs, 1,
+        (const char *)test_data->now, &zkproof, &proof_len, &kZkSpecs[0]);
+
+    if (ret != MDOC_PROVER_SUCCESS) {
+      state.SkipWithError("Prover failed");
+      break;
+    }
+    benchmark::DoNotOptimize(zkproof);
+  }
+  if (zkproof)
+    free(zkproof);
+  if (circuit)
+    free(circuit);
+}
+BENCHMARK(BM_SmartAge_LEQ);
+
+// Benchmark for Smart Age Verification (GEQ: Under 65 smart check)
+void BM_SmartAge_GEQ(benchmark::State &state) {
+  uint8_t *circuit = nullptr;
+  size_t circuit_len = 0;
+  if (generate_circuit(&kZkSpecs[0], &circuit, &circuit_len) !=
+      CIRCUIT_GENERATION_SUCCESS) {
+    state.SkipWithError("Circuit generation failed in setup");
+    return;
+  }
+
+  // Use mdoc_tests[2] (Born 1968)
+  const MdocTests *test_data = &mdoc_tests[2];
+  RequestedAttribute attrs[] = {test::proof_age_under_65_limit_1958};
+  uint8_t *zkproof = nullptr;
+  size_t proof_len = 0;
+
+  for (auto _ : state) {
+    state.PauseTiming();
+    if (zkproof) {
+      free(zkproof);
+      zkproof = nullptr;
+    }
+    state.ResumeTiming();
+
+    MdocProverErrorCode ret = run_mdoc_prover(
+        circuit, circuit_len, test_data->mdoc, test_data->mdoc_size,
+        test_data->pkx.as_pointer, test_data->pky.as_pointer,
+        test_data->transcript, test_data->transcript_size, attrs, 1,
+        (const char *)test_data->now, &zkproof, &proof_len, &kZkSpecs[0]);
+
+    if (ret != MDOC_PROVER_SUCCESS) {
+      state.SkipWithError("Prover failed");
+      break;
+    }
+    benchmark::DoNotOptimize(zkproof);
+  }
+  if (zkproof)
+    free(zkproof);
+  if (circuit)
+    free(circuit);
+}
+BENCHMARK(BM_SmartAge_GEQ);
+
 } // namespace
 } // namespace proofs
+
+BENCHMARK_MAIN();

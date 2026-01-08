@@ -149,3 +149,5 @@ BENCHMARK(BM_Verifier_AgeOver18);
 
 } // namespace
 } // namespace proofs
+
+BENCHMARK_MAIN();

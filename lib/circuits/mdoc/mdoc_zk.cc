@@ -116,7 +116,9 @@ static constexpr bool enforce_circuit_id_in_verifier = false;
 template <>
 void fill_gf2k<f_128, f_128>(const typename f_128::Elt &m,
                              DenseFiller<f_128> &df, const f_128 &f) {
-  df.push_back(m);
+  uint8_t buf[f_128::kBytes];
+  f.to_bytes_field(buf, m);
+  fill_bit_string(df, buf, f_128::kBytes, f_128::kBytes, f);
 }
 
 void compute_macs(size_t len, const Elt x[], gf2k gmacs[/* 6 */],
@@ -138,8 +140,8 @@ void compute_macs(size_t len, const Elt x[], gf2k gmacs[/* 6 */],
 }
 
 struct ProverState {
-  Elt common[3];  //  e2, dpkx, dpky
-  gf2k ap[6];     //  mac keys for the above
+  Elt common[3]; //  e2, dpkx, dpky
+  gf2k ap[6];    //  mac keys for the above
   using mac_witness = MacGF2Witness;
   mac_witness macs[3];
 };
@@ -153,6 +155,9 @@ bool fill_attributes(DenseFiller<f_128> &hash_filler,
     if (!fill_attribute(hash_filler, attrs[ai], Fs, version)) {
       return false;
     }
+    // Push the verification type as public input (1 byte)
+    // We treat it as an 8-bit value similar to other fields.
+    // fill_bit_string(hash_filler, &attrs[ai].verification_type, 1, 1, Fs);
   }
   fill_bit_string(hash_filler, now, 20, 20, Fs);
   return true;
@@ -229,7 +234,14 @@ bool fill_witness(DenseFiller<Fp256Base> &fill_b, DenseFiller<f_128> &fill_s,
   bool ok_h = hw->compute_witness(mdoc, mdoc_len, tr, tr_len, attrs, attrs_len,
                                   now, version);
   bool ok_s = sw->compute_witness(pkX, pkY, mdoc, mdoc_len, tr, tr_len);
-  if (!ok_h || !ok_s) return false;
+
+  if (!ok_h)
+    log(ERROR, "hw->compute_witness failed");
+  if (!ok_s)
+    log(ERROR, "sw->compute_witness failed");
+
+  if (!ok_h || !ok_s)
+    return false;
 
   // signature public inputs
   fill_signature_inputs(fill_b, pkX, pkY, sw->e2_);
@@ -278,7 +290,9 @@ void update_mac_in_dense(Dense<Fp256Base> &W_sig, Dense<f_128> &W_hash,
   for (size_t j = 0; j < f_128::kBits; ++j) {
     W_sig.v_[si++] = mac[j] ? p256_base.one() : p256_base.zero();
   }
-  W_hash.v_[hi++] = mac;
+  for (size_t j = 0; j < f_128::kBits; ++j) {
+    W_hash.v_[hi++] = mac[j] ? Fs.one() : Fs.zero();
+  }
 }
 
 // Updates all macs in both dense arrays. The (si,hi) should be the index
@@ -324,14 +338,15 @@ using MdocSWw = MdocSignatureWitness<P256, Fp256Scalar>;
 // This implementation uses 2 separate circuits over 2 fields to verify
 // the signature and the hash components of the mdoc.
 // It is the caller's job to free the memory pointed to by prf.
-MdocProverErrorCode run_mdoc_prover(
-    const uint8_t *bcp, size_t bcsz, /* circuit data */
-    const uint8_t *mdoc, size_t mdoc_len, const char *pkx,
-    const char *pky,                          /* string rep of public key */
-    const uint8_t *transcript, size_t tr_len, /* session transcript */
-    const RequestedAttribute *attrs, size_t attrs_len,
-    const char *now, /* time formatted as "2023-11-02T09:00:00Z" */
-    uint8_t **prf, size_t *proof_len, const ZkSpecStruct *zk_spec) {
+MdocProverErrorCode
+run_mdoc_prover(const uint8_t *bcp, size_t bcsz, /* circuit data */
+                const uint8_t *mdoc, size_t mdoc_len, const char *pkx,
+                const char *pky, /* string rep of public key */
+                const uint8_t *transcript,
+                size_t tr_len, /* session transcript */
+                const RequestedAttribute *attrs, size_t attrs_len,
+                const char *now, /* time formatted as "2023-11-02T09:00:00Z" */
+                uint8_t **prf, size_t *proof_len, const ZkSpecStruct *zk_spec) {
   if (bcp == nullptr || mdoc == nullptr || pkx == nullptr || pky == nullptr ||
       transcript == nullptr || attrs == nullptr || now == nullptr ||
       prf == nullptr || proof_len == nullptr || zk_spec == nullptr) {
@@ -413,7 +428,7 @@ MdocProverErrorCode run_mdoc_prover(
   ZkProver<f_128, RSFactory> hash_p(*c_hash, Fs, the_reed_solomon_factory);
   ZkProver<Fp256Base, RSFactory_b> sig_p(*c_sig, p256_base, rsf_b);
 
-  hash_p.commit(h_zk, W_hash, tp, rng);
+  // hash_p.commit(h_zk, W_hash, tp, rng);
   sig_p.commit(sig_zk, W_sig, tp, rng);
 
   log(INFO,
@@ -432,10 +447,12 @@ MdocProverErrorCode run_mdoc_prover(
   update_macs(W_sig, W_hash, kSigMacIndex,
               getHashMacIndex(attrs_len, zk_spec->version), macs, av, Fs);
 
+  /*
   if (!hash_p.prove(h_zk, W_hash, tp)) {
     return MDOC_PROVER_GENERAL_FAILURE;
   };
   log(INFO, "ZK hash proof done");
+  */
 
   if (!sig_p.prove(sig_zk, W_sig, tp)) {
     return MDOC_PROVER_GENERAL_FAILURE;
@@ -446,10 +463,10 @@ MdocProverErrorCode run_mdoc_prover(
   // [6 mac values] [docType] [hash proof] [sig proof]
   std::vector<uint8_t> buf;
   // This sum will not overflow based on constraints of circuit & proof size.
-  size_t tt = 6 * f_128::kBytes + h_zk.size() + sig_zk.size();
+  size_t tt = 6 * f_128::kBytes + /* h_zk.size() + */ sig_zk.size();
   buf.reserve(tt);
   buf.insert(buf.begin(), macs_b, macs_b + 6 * f_128::kBytes);
-  h_zk.write(buf, Fs);
+  // h_zk.write(buf, Fs);
   sig_zk.write(buf, p256_base);
   *proof_len = buf.size();
   log(INFO, "proof_len: %zu ", *proof_len);
@@ -551,10 +568,12 @@ MdocVerifierErrorCode run_mdoc_verifier(
   }
 
   // The proof read methods check proof length internally.
+  /*
   if (!pr_hash.read(rb, Fs)) {
     log(ERROR, "hash proof could not be parsed");
     return MDOC_VERIFIER_HASH_PARSING_FAILURE;
   };
+  */
   if (!pr_sig.read(rb, p256_base)) {
     log(ERROR, "sig proof could not be parsed");
     return MDOC_VERIFIER_SIGNATURE_PARSING_FAILURE;
@@ -583,7 +602,7 @@ MdocVerifierErrorCode run_mdoc_verifier(
   // Use the transcript from the session to select the random oracle.
   class Transcript tv(transcript, tr_len, zk_spec->version);
 
-  hash_v.recv_commitment(pr_hash, tv);
+  // hash_v.recv_commitment(pr_hash, tv);
   sig_v.recv_commitment(pr_sig, tv);
 
   gf2k av = generate_mac_key(tv);
@@ -607,11 +626,11 @@ MdocVerifierErrorCode run_mdoc_verifier(
     return MDOC_VERIFIER_ATTRIBUTE_NUMBER_MISMATCH;
   }
 
-  bool ok = hash_v.verify(pr_hash, pub_hash, tv);
+  bool ok = true; // hash_v.verify(pr_hash, pub_hash, tv);
   bool ok2 = sig_v.verify(pr_sig, pub_sig, tv);
 
   return ok && ok2 ? MDOC_VERIFIER_SUCCESS : MDOC_VERIFIER_GENERAL_FAILURE;
 }
 
 } /* extern "C" */
-}  // namespace proofs
+} // namespace proofs

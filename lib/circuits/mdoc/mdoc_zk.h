@@ -31,7 +31,7 @@ extern "C" {
 // result cached for subsequent use in the prover and verifier.
 
 const size_t kLigeroRate = 4;
-const size_t kLigeroNreq = 128;  // 86+ bits statistical security
+const size_t kLigeroNreq = 128; // 86+ bits statistical security
 
 /* This struct allows a verifier to express which attribute and value the prover
  * must claim.  The value should be passed as the raw bytes of the CBOR value.
@@ -41,6 +41,8 @@ typedef struct {
   uint8_t id[32];
   uint8_t cbor_value[64];
   size_t namespace_len, id_len, cbor_value_len;
+  // 0=EQ, 1=LEQ (private <= public), 2=GEQ (private >= public)
+  uint8_t verification_type;
 } RequestedAttribute;
 
 // Return codes for the run_mdoc2_prover method.
@@ -88,7 +90,7 @@ typedef enum {
 // both support before executing digital credential presentment.
 typedef struct {
   // The ZK system name and version- "longfellow-libzk-v*" for Google library.
-  const char* system;
+  const char *system;
   // The hash of the compressed circuit (the way it's generated and passed to
   // prover/verifier)
   const char circuit_hash[65];
@@ -105,7 +107,7 @@ static const char kDefaultDocType[] = "org.iso.18013.5.1.mDL";
 // An upper-bound on the decompressed circuit size. It is better to make this
 // bound tight to avoid memory failure in the resource restricted Android
 // gmscore environment.
-static const size_t kCircuitSizeMax = 150000000;
+static const size_t kCircuitSizeMax = 400000000;
 
 // The run_mdoc2_prover method takes byte-oriented inputs that describe a
 // circuit, mdoc, the public key of the issuer for the mdoc, a transcript
@@ -124,41 +126,41 @@ static const size_t kCircuitSizeMax = 150000000;
 // {(uint8_t *)"issue_date", 10, (uint8_t *)"\xD9\x03\xEC\x6A" "2024-03-15",
 // 14},
 MdocProverErrorCode run_mdoc_prover(
-    const uint8_t* bcp, size_t bcsz,          /* circuit data */
-    const uint8_t* mdoc, size_t mdoc_len,     /* full mdoc */
-    const char* pkx, const char* pky,         /* string rep of public key */
-    const uint8_t* transcript, size_t tr_len, /* session transcript */
-    const RequestedAttribute* attrs, size_t attrs_len,
-    const char* now, /* time formatted as "2023-11-02T09:00:00Z" */
-    uint8_t** prf, size_t* proof_len, const ZkSpecStruct* zk_spec_version);
+    const uint8_t *bcp, size_t bcsz,          /* circuit data */
+    const uint8_t *mdoc, size_t mdoc_len,     /* full mdoc */
+    const char *pkx, const char *pky,         /* string rep of public key */
+    const uint8_t *transcript, size_t tr_len, /* session transcript */
+    const RequestedAttribute *attrs, size_t attrs_len,
+    const char *now, /* time formatted as "2023-11-02T09:00:00Z" */
+    uint8_t **prf, size_t *proof_len, const ZkSpecStruct *zk_spec_version);
 
 // The run_mdoc2_verifier method accepts a byte representation of the circuit,
 // the public key of the issuer, the transcript, an array of RequestedAttribute
 // that represents claims that you want to verify, and a 20-char representation
 // of the time, as well as the proof and its length.
 MdocVerifierErrorCode run_mdoc_verifier(
-    const uint8_t* bcp, size_t bcsz,          /* circuit data */
-    const char* pkx, const char* pky,         /* string rep of public key */
-    const uint8_t* transcript, size_t tr_len, /* session transcript */
-    const RequestedAttribute* attrs, size_t attrs_len,
-    const char* now, /* time formatted as "2023-11-02T09:00:00Z" */
-    const uint8_t* zkproof, size_t proof_len, const char* docType,
-    const ZkSpecStruct* zk_spec_version);
+    const uint8_t *bcp, size_t bcsz,          /* circuit data */
+    const char *pkx, const char *pky,         /* string rep of public key */
+    const uint8_t *transcript, size_t tr_len, /* session transcript */
+    const RequestedAttribute *attrs, size_t attrs_len,
+    const char *now, /* time formatted as "2023-11-02T09:00:00Z" */
+    const uint8_t *zkproof, size_t proof_len, const char *docType,
+    const ZkSpecStruct *zk_spec_version);
 
 // Produces a compressed version of the circuit bytes for the specified number
 // of attributes. The generator only supports the latest version of the ZKSpec
 // for a number of attributes. Attempt to generate older circuits will result in
 // an error.
-CircuitGenerationErrorCode generate_circuit(const ZkSpecStruct* zk_spec_version,
-                                            uint8_t** cb, size_t* clen);
+CircuitGenerationErrorCode generate_circuit(const ZkSpecStruct *zk_spec_version,
+                                            uint8_t **cb, size_t *clen);
 
 // Produces an identifier for a pair of circuits (c_1, c_2) over (Fp256, f_128)
 // respectively. This method parses the input bytes into two circuits, computes
 // the circuit's ids of each, and then computes the SHA256 hash of the two ids.
 // This method is used to identify "circuit bundles" consisting of multiple
 // circuits.
-int circuit_id(uint8_t id[/*kSHA256DigestSize*/], const uint8_t* bcp,
-               size_t bcsz, const ZkSpecStruct* zk_spec);
+int circuit_id(uint8_t id[/*kSHA256DigestSize*/], const uint8_t *bcp,
+               size_t bcsz, const ZkSpecStruct *zk_spec);
 
 enum { kNumZkSpecs = 8 };
 // This is a hardcoded list of all the ZK specifications supported by this
@@ -170,11 +172,11 @@ extern const ZkSpecStruct kZkSpecs[kNumZkSpecs];
 
 // Returns a static pointer to the ZkSpecStruct that matches the given system
 // name and circuit hash. Returns nullptr if no matching ZkSpecStruct is found.
-const ZkSpecStruct* find_zk_spec(const char* system_name,
-                                 const char* circuit_hash);
+const ZkSpecStruct *find_zk_spec(const char *system_name,
+                                 const char *circuit_hash);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif  // PRIVACY_PROOFS_ZK_LIB_CIRCUITS_MDOC_MDOC_ZK_H_
+#endif // PRIVACY_PROOFS_ZK_LIB_CIRCUITS_MDOC_MDOC_ZK_H_

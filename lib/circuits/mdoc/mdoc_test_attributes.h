@@ -26,7 +26,8 @@ static const RequestedAttribute age_over_18 = {
     .cbor_value = {0xf5},
     .namespace_len = 17,
     .id_len = 11,
-    .cbor_value_len = 1};
+    .cbor_value_len = 1,
+    .verification_type = 0};
 
 static const RequestedAttribute europa_age_over_18 = {
     .namespace_id = {'e', 'u', '.', 'e', 'u', 'r', 'o', 'p', 'a', '.', 'e', 'c',
@@ -35,15 +36,18 @@ static const RequestedAttribute europa_age_over_18 = {
     .cbor_value = {0xf5},
     .namespace_len = 17,
     .id_len = 11,
-    .cbor_value_len = 1};
+    .cbor_value_len = 1,
+    .verification_type = 0};
 
 static const RequestedAttribute not_over_18 = {
     .namespace_id = {'o', 'r', 'g', '.', 'i', 's', 'o', '.', '1', '8', '0', '1',
                      '3', '.', '5', '.', '1'},
     .id = {'a', 'g', 'e', '_', 'o', 'v', 'e', 'r', '_', '1', '8'},
     .cbor_value = {0xf4},
+    .namespace_len = 17, // Fixed missing namespace_len from previous view
     .id_len = 11,
-    .cbor_value_len = 1};
+    .cbor_value_len = 1,
+    .verification_type = 0};
 
 static const RequestedAttribute age_birth_year = {
     .namespace_id = {'o', 'r', 'g', '.', 'i', 's', 'o', '.', '1', '8', '0', '1',
@@ -53,7 +57,8 @@ static const RequestedAttribute age_birth_year = {
     .cbor_value = {0x19, 0x07, 0xB0},
     .namespace_len = 17,
     .id_len = 14,
-    .cbor_value_len = 3};
+    .cbor_value_len = 3,
+    .verification_type = 0};
 
 static const RequestedAttribute familyname_mustermann = {
     .namespace_id = {'o', 'r', 'g', '.', 'i', 's', 'o', '.', '1', '8', '0', '1',
@@ -62,7 +67,8 @@ static const RequestedAttribute familyname_mustermann = {
     .cbor_value = {0x6A, 'M', 'u', 's', 't', 'e', 'r', 'm', 'a', 'n', 'n'},
     .namespace_len = 17,
     .id_len = 11,
-    .cbor_value_len = 11};
+    .cbor_value_len = 11,
+    .verification_type = 0};
 
 static const RequestedAttribute birthdate_1971_09_01 = {
     .namespace_id = {'o', 'r', 'g', '.', 'i', 's', 'o', '.', '1', '8', '0', '1',
@@ -72,7 +78,8 @@ static const RequestedAttribute birthdate_1971_09_01 = {
                    '-', '0', '1'},
     .namespace_len = 17,
     .id_len = 10,
-    .cbor_value_len = 14};
+    .cbor_value_len = 14,
+    .verification_type = 0};
 
 static const RequestedAttribute birthdate_1998_09_04 = {
     .namespace_id = {'o', 'r', 'g', '.', 'i', 's', 'o', '.', '1', '8', '0', '1',
@@ -82,7 +89,8 @@ static const RequestedAttribute birthdate_1998_09_04 = {
                    '-', '0', '4'},
     .namespace_len = 17,
     .id_len = 10,
-    .cbor_value_len = 14};
+    .cbor_value_len = 14,
+    .verification_type = 0};
 
 static const RequestedAttribute birthdate_1968_04_27 = {
     .namespace_id = {'o', 'r', 'g', '.', 'i', 's', 'o', '.', '1', '8', '0', '1',
@@ -92,7 +100,8 @@ static const RequestedAttribute birthdate_1968_04_27 = {
                    '-', '2', '7'},
     .namespace_len = 17,
     .id_len = 10,
-    .cbor_value_len = 14};
+    .cbor_value_len = 14,
+    .verification_type = 0};
 
 static const RequestedAttribute height_175 = {
     .namespace_id = {'o', 'r', 'g', '.', 'i', 's', 'o', '.', '1', '8', '0', '1',
@@ -101,7 +110,8 @@ static const RequestedAttribute height_175 = {
     .cbor_value = {0x18, 0xaf},
     .namespace_len = 17,
     .id_len = 6,
-    .cbor_value_len = 2};
+    .cbor_value_len = 2,
+    .verification_type = 0};
 
 static const RequestedAttribute issue_date_2024_03_15 = {
     .namespace_id = {'o', 'r', 'g', '.', 'i', 's', 'o', '.', '1', '8', '0', '1',
@@ -111,7 +121,8 @@ static const RequestedAttribute issue_date_2024_03_15 = {
                    '-', '1', '5'},
     .namespace_len = 17,
     .id_len = 10,
-    .cbor_value_len = 14};
+    .cbor_value_len = 14,
+    .verification_type = 0};
 
 static const RequestedAttribute issue_date_2025_07_21 = {
     .namespace_id = {'o', 'r', 'g', '.', 'i', 's', 'o', '.', '1', '8', '0', '1',
@@ -121,7 +132,8 @@ static const RequestedAttribute issue_date_2025_07_21 = {
                    '1',  'T',  '0', '4', ':', '0', '0', ':', '0', '0', 'Z'},
     .namespace_len = 17,
     .id_len = 10,
-    .cbor_value_len = 22};
+    .cbor_value_len = 22,
+    .verification_type = 0};
 
 static const RequestedAttribute aamva_name_suffix_mr = {
     .namespace_id = {'o', 'r', 'g', '.', 'i', 's', 'o', '.', '1', '8', '0',
@@ -130,7 +142,8 @@ static const RequestedAttribute aamva_name_suffix_mr = {
     .cbor_value = {0x63, 'M', 'r', '.'},
     .namespace_len = 21,
     .id_len = 11,
-    .cbor_value_len = 4};
+    .cbor_value_len = 4,
+    .verification_type = 0};
 
 static const RequestedAttribute aamva_dhs_compliance = {
     .namespace_id = {'o', 'r', 'g', '.', 'i', 's', 'o', '.', '1', '8', '0',
@@ -140,7 +153,8 @@ static const RequestedAttribute aamva_dhs_compliance = {
     .cbor_value = {0x61, 'F'},
     .namespace_len = 21,
     .id_len = 14,
-    .cbor_value_len = 2};
+    .cbor_value_len = 2,
+    .verification_type = 0};
 
 static const RequestedAttribute driving_privileges_A = {
     .namespace_id = {'o', 'r', 'g', '.', 'i', 's', 'o', '.', '1', '8', '0', '1',
@@ -152,7 +166,8 @@ static const RequestedAttribute driving_privileges_A = {
                    'y',  '_',  'c',  'o', 'd', 'e', 0x61, 'A'},
     .namespace_len = 17,
     .id_len = 18,
-    .cbor_value_len = 26};
+    .cbor_value_len = 26,
+    .verification_type = 0};
 
 static const RequestedAttribute driving_privileges_B = {
     .namespace_id = {'o', 'r', 'g', '.', 'i', 's', 'o', '.', '1', '8', '0', '1',
@@ -164,7 +179,8 @@ static const RequestedAttribute driving_privileges_B = {
                    'y',  '_',  'c',  'o', 'd', 'e', 0x61, 'B'},
     .namespace_len = 17,
     .id_len = 18,
-    .cbor_value_len = 26};
+    .cbor_value_len = 26,
+    .verification_type = 0};
 
 static const RequestedAttribute driving_privileges_C = {
     .namespace_id = {'o', 'r', 'g', '.', 'i', 's', 'o', '.', '1', '8', '0', '1',
@@ -176,7 +192,8 @@ static const RequestedAttribute driving_privileges_C = {
                    'y',  '_',  'c',  'o', 'd', 'e', 0x61, 'C'},
     .namespace_len = 17,
     .id_len = 18,
-    .cbor_value_len = 26};
+    .cbor_value_len = 26,
+    .verification_type = 0};
 
 // Proxy for Category B using height (since we can't sign new attributes)
 static const RequestedAttribute category_B_proxy = {
@@ -186,7 +203,8 @@ static const RequestedAttribute category_B_proxy = {
     .cbor_value = {0x18, 0xaf},
     .namespace_len = 17,
     .id_len = 6,
-    .cbor_value_len = 2};
+    .cbor_value_len = 2,
+    .verification_type = 0};
 
 // Student Status Attribute
 static const RequestedAttribute is_student = {
@@ -196,7 +214,43 @@ static const RequestedAttribute is_student = {
     .cbor_value = {0xf5}, // true
     .namespace_len = 19,
     .id_len = 10,
-    .cbor_value_len = 1};
+    .cbor_value_len = 1,
+    .verification_type = 0};
+
+// Smart Age Verification Attributes
+// 18yo in 2026. Limit: 2008-01-01
+static const RequestedAttribute proof_age_over_18_limit_2008 = {
+    .namespace_id = {'o', 'r', 'g', '.', 'i', 's', 'o', '.', '1', '8', '0', '1',
+                     '3', '.', '5', '.', '1'},
+    .id = {'b', 'i', 'r', 't', 'h', '_', 'd', 'a', 't', 'e'},
+    .cbor_value = {'2', '0', '0', '8', '-', '0', '1', '-', '0', '1'},
+    .namespace_len = 17,
+    .id_len = 10,
+    .cbor_value_len = 10,
+    .verification_type = 1 // LEQ
+};
+
+static const RequestedAttribute proof_age_under_18_limit_2009 = {
+    .namespace_id = {'o', 'r', 'g', '.', 'i', 's', 'o', '.', '1', '8', '0', '1',
+                     '3', '.', '5', '.', '1'},
+    .id = {'b', 'i', 'r', 't', 'h', '_', 'd', 'a', 't', 'e'},
+    .cbor_value = {'2', '0', '0', '9', '-', '0', '1', '-', '0', '1'},
+    .namespace_len = 17,
+    .id_len = 10,
+    .cbor_value_len = 10,
+    .verification_type = 1 // LEQ
+};
+
+static const RequestedAttribute proof_age_under_65_limit_1958 = {
+    .namespace_id = {'o', 'r', 'g', '.', 'i', 's', 'o', '.', '1', '8', '0', '1',
+                     '3', '.', '5', '.', '1'},
+    .id = {'b', 'i', 'r', 't', 'h', '_', 'd', 'a', 't', 'e'},
+    .cbor_value = {'1', '9', '5', '8', '-', '0', '1', '-', '0', '1'},
+    .namespace_len = 17,
+    .id_len = 10,
+    .cbor_value_len = 10,
+    .verification_type = 2 // GEQ
+};
 
 } // namespace test
 } // namespace proofs

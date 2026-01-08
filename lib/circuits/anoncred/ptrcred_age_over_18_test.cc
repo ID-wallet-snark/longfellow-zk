@@ -1,16 +1,4 @@
-// Copyright 2025 Google LLC.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+
 
 #ifndef PRIVACY_PROOFS_ZK_LIB_CIRCUITS_ANONCRED_age_TEST_CC_
 #define PRIVACY_PROOFS_ZK_LIB_CIRCUITS_ANONCRED_age_TEST_CC_
@@ -27,9 +15,10 @@
 #include "algebra/fp2.h"
 #include "algebra/reed_solomon.h"
 #include "arrays/dense.h"
+#include "benchmark/benchmark.h"
 #include "circuits/anoncred/ptrcred_examples.h"
-#include "circuits/anoncred/small_io.h"
 #include "circuits/anoncred/ptrcred_witness.h"
+#include "circuits/anoncred/small_io.h"
 #include "circuits/compiler/circuit_dump.h"
 #include "circuits/compiler/compiler.h"
 #include "circuits/logic/compiler_backend.h"
@@ -43,17 +32,18 @@
 #include "zk/zk_proof.h"
 #include "zk/zk_prover.h"
 #include "zk/zk_testing.h"
-#include "benchmark/benchmark.h"
 #include "gtest/gtest.h"
+
 
 namespace proofs {
 namespace {
 
 class PtrCredOpenedAttribute {
- public:
+public:
   size_t ind_, len_;
   std::vector<uint8_t> value_;
-  PtrCredOpenedAttribute(size_t ind, size_t len, const uint8_t* val, size_t vlen)
+  PtrCredOpenedAttribute(size_t ind, size_t len, const uint8_t *val,
+                         size_t vlen)
       : ind_(ind), len_(len), value_(val, val + vlen) {}
 };
 
@@ -61,10 +51,10 @@ using Sw = PtrCredWitness<P256, Fp256Base, Fp256Scalar>;
 static constexpr size_t kNumAttr = 1;
 
 // Helper functions to create circuit and fill the witness.
-// NOTE: PTRCRED_SKIP_CRYPTO_CHECKS disables signature verification, SHA assertion,
-// and device key checks in the circuit. This allows us to test the age verification
-// logic in isolation. For production use, remove this define to enable full
-// cryptographic validation.
+// NOTE: PTRCRED_SKIP_CRYPTO_CHECKS disables signature verification, SHA
+// assertion, and device key checks in the circuit. This allows us to test the
+// age verification logic in isolation. For production use, remove this define
+// to enable full cryptographic validation.
 //
 // Current test status:
 // ✓ Age attribute extraction from credential at offset 15
@@ -77,14 +67,15 @@ static constexpr size_t kNumAttr = 1;
 // - Validate SHA256 message transformation
 // - Check device public key consistency
 // - Ensure date ranges are valid
-#define PTRCRED_SKIP_CRYPTO_CHECKS  // Focus test on age verification logic only.
+#define PTRCRED_SKIP_CRYPTO_CHECKS // Focus test on age verification logic only.
 
 std::unique_ptr<Circuit<Fp256Base>> make_circuit() {
   using CompilerBackend = CompilerBackend<Fp256Base>;
   using LogicCircuit = Logic<Fp256Base, CompilerBackend>;
   using v8 = typename LogicCircuit::v8;
   using EltW = LogicCircuit::EltW;
-  using PtrCredAgeOver18 = PtrCredAgeOver18<LogicCircuit, Fp256Base, P256, kNumAttr>;
+  using PtrCredAgeOver18 =
+      PtrCredAgeOver18<LogicCircuit, Fp256Base, P256, kNumAttr>;
   QuadCircuit<Fp256Base> Q(p256_base);
   const CompilerBackend cbk(&Q);
   const LogicCircuit LC(&cbk, p256_base);
@@ -135,9 +126,9 @@ void fill_witness(Dense<Fp256Base> &W, Dense<Fp256Base> &pub) {
     pkX = p256_base.of_string(test.pkx);
     pkY = p256_base.of_string(test.pky);
     bool ok =
-        sw.compute_witness(pkX, pkY, test.ptrcred, test.ptrcred_size, test.transcript,
-                           test.transcript_size, test.now, test.sigr, test.sigs,
-                           test.sigtr, test.sigts);
+        sw.compute_witness(pkX, pkY, test.ptrcred, test.ptrcred_size,
+                           test.transcript, test.transcript_size, test.now,
+                           test.sigr, test.sigs, test.sigtr, test.sigts);
 
     check(ok, "Could not compute signature witness");
     log(INFO, "Witness done");
@@ -169,11 +160,11 @@ void fill_witness(Dense<Fp256Base> &W, Dense<Fp256Base> &pub) {
       }
     }
 
-  // AgeAttribute pointing to digits only: offset 15 ('1'), 16 ('9')
-  filler.push_back(15, 8, p256_base);  // Index of first digit
-  pub_filler.push_back(15, 8, p256_base);
-  filler.push_back(2, 8, p256_base);   // Length of digits
-  pub_filler.push_back(2, 8, p256_base);
+    // AgeAttribute pointing to digits only: offset 15 ('1'), 16 ('9')
+    filler.push_back(15, 8, p256_base); // Index of first digit
+    pub_filler.push_back(15, 8, p256_base);
+    filler.push_back(2, 8, p256_base); // Length of digits
+    pub_filler.push_back(2, 8, p256_base);
 
     for (size_t i = 0; i < kDateLen; ++i) {
       filler.push_back(sw.now_[i], 8, p256_base);
@@ -247,7 +238,7 @@ void BM_AnonCred(benchmark::State &state) {
 }
 BENCHMARK(BM_AnonCred);
 
-}  // namespace
-}  // namespace proofs
+} // namespace
+} // namespace proofs
 
-#endif  // PRIVACY_PROOFS_ZK_LIB_CIRCUITS_ANONCRED_age_TEST_CC_
+#endif // PRIVACY_PROOFS_ZK_LIB_CIRCUITS_ANONCRED_age_TEST_CC_
