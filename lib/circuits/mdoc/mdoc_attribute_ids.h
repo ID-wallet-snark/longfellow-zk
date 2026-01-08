@@ -294,6 +294,14 @@ constexpr MdocAttribute kMdocAttributes[] = {
     {"given_name", kFRStudent1Namespace},
     {"birth_date", kFRStudent1Namespace},
     {"is_student", kFRStudent1Namespace},
+    // Pour valider le statut etudiant, il faut numeriser les attributs d’une carte etudiante officielle
+    // {"student_card_number", kFRStudent1Namespace},
+    // {"student_card_expiry_date", kFRStudent1Namespace},
+    // {"university_name", kFRStudent1Namespace},
+    // {"university_address", kFRStudent1Namespace},
+    // {"university_city", kFRStudent1Namespace},
+    // {"university_postal_code", kFRStudent1Namespace},
+    // {"university_country", kFRStudent1Namespace},
 };
 
 }  // namespace proofs
