@@ -20,6 +20,7 @@ add_compile_definitions(OPENSSL_SUPPRESS_DEPRECATED=1)
 # find_package(GTest REQUIRED)
 
 macro(proofs_add_testing_libraries PROG)
+  target_link_libraries(${PROG} gtest gtest_main)
 endmacro()
 
 macro(proofs_add_test PROG)
@@ -42,31 +43,37 @@ add_library(mdoc_static STATIC
 )
 target_include_directories(mdoc_static PUBLIC ../../)
 
-# proofs_add_test(mdoc_signature_test)
-# target_link_libraries(mdoc_signature_test mdoc)
+add_executable(mdoc_signature_test mdoc_signature_test.cc)
+target_link_libraries(mdoc_signature_test mdoc)
+proofs_add_testing_libraries(mdoc_signature_test)
+target_link_libraries(mdoc_signature_test crypto zstd)
 
 #proofs_add_test(zk_spec_test)
 #target_link_libraries(zk_spec_test mdoc)
 
-# proofs_add_test(mdoc_1f_test)
-# target_link_libraries(mdoc_1f_test mdoc)
+add_executable(mdoc_1f_test mdoc_1f_test.cc)
+target_link_libraries(mdoc_1f_test mdoc)
+proofs_add_testing_libraries(mdoc_1f_test)
+target_link_libraries(mdoc_1f_test benchmark::benchmark)
+target_link_libraries(mdoc_1f_test crypto zstd)
 
 # link mdoc_zk_test explicitly against the static library
 # so that we know that the static library works
 add_executable(mdoc_zk_test mdoc_zk_test.cc)
 target_link_libraries(mdoc_zk_test mdoc_static)
-# proofs_add_testing_libraries(mdoc_zk_test)
+proofs_add_testing_libraries(mdoc_zk_test)
+target_link_libraries(mdoc_zk_test benchmark::benchmark)
 target_link_libraries(mdoc_zk_test crypto zstd)
 
-# add_executable(french_license_test french_license_test.cc)
-# target_link_libraries(french_license_test mdoc_static)
-# proofs_add_testing_libraries(french_license_test)
-# target_link_libraries(french_license_test crypto zstd)
+add_executable(french_license_test french_license_test.cc)
+target_link_libraries(french_license_test mdoc_static)
+proofs_add_testing_libraries(french_license_test)
+target_link_libraries(french_license_test crypto zstd)
 
-# add_executable(nationality_test nationality_test.cc)
-# target_link_libraries(nationality_test mdoc_static)
-# proofs_add_testing_libraries(nationality_test)
-# target_link_libraries(nationality_test crypto zstd)
+add_executable(nationality_test nationality_test.cc)
+target_link_libraries(nationality_test mdoc_static)
+proofs_add_testing_libraries(nationality_test)
+target_link_libraries(nationality_test crypto zstd)
 
 # Link against static lib
 add_executable(student_verifier student_verifier.cc)
@@ -156,14 +163,3 @@ set_target_properties(smart_age_test PROPERTIES CXX_STANDARD 17)
 add_executable(student_card_bench student_card_bench.cc)
 target_link_libraries(student_card_bench mdoc_static testing_main benchmark::benchmark crypto zstd)
 set_target_properties(student_card_bench PROPERTIES CXX_STANDARD 17)
-
-
-
-
-
-
-
-
-
-
-
