@@ -222,8 +222,8 @@ void BM_SmartAge_GEQ(benchmark::State &state) {
     return;
   }
 
-  // Use mdoc_tests[2] (Born 1968)
-  const MdocTests *test_data = &mdoc_tests[2];
+  // Use mdoc_tests[3] (Born 1968)
+  const MdocTests *test_data = &mdoc_tests[3];
   RequestedAttribute attrs[] = {test::proof_age_under_65_limit_1958};
   uint8_t *zkproof = nullptr;
   size_t proof_len = 0;
