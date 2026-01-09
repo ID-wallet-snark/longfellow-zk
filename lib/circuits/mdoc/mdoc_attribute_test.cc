@@ -19,6 +19,9 @@
 
 #include "circuits/mdoc/mdoc_attribute_ids.h"
 #include "circuits/mdoc/mdoc_witness.h"
+#include "circuits/mdoc/mdoc_examples.h"
+#include "circuits/mdoc/mdoc_test_attributes.h"
+#include "circuits/mdoc/mdoc_zk.h"
 #include "util/log.h"
 #include "gtest/gtest.h"
 
@@ -40,13 +43,18 @@ TEST(MdocAttributeTest, MdocAttributeIdsAreSuffixFree) {
                     attr.identifier.end());
     std::string attr_enc_str(attr_enc.begin(), attr_enc.end());
     for (const auto& aj : kMdocAttributes) {
-      if (aj.identifier.ends_with(attr_enc_str) &&
-          aj.identifier != attr.identifier) {
+      bool ends_with = false;
+      if (aj.identifier.size() >= attr_enc_str.size()) {
+        ends_with = (aj.identifier.compare(
+                         aj.identifier.size() - attr_enc_str.size(),
+                         attr_enc_str.size(), attr_enc_str) == 0);
+      }
+
+      if (ends_with && aj.identifier != attr.identifier) {
         log(INFO, "identifier %s is a suffix of %s\n", aj.identifier.data(),
             attr.identifier.data());
       }
-      EXPECT_TRUE(!aj.identifier.ends_with(attr_enc_str) ||
-                  aj.identifier == attr.identifier);
+      EXPECT_TRUE(!ends_with || aj.identifier == attr.identifier);
     }
   }
 }
@@ -58,6 +66,113 @@ TEST(MdocAttributeTest, DelimiterIsPresent) {
     EXPECT_TRUE(attr.identifier.find("ier") == std::string::npos);
     EXPECT_TRUE(attr.identifier.find("elementValue") == std::string::npos);
   }
+}
+
+class SmartAgeTest : public testing::Test {
+protected:
+  static void SetUpTestCase() {
+    if (circuit_ == nullptr) {
+      generate_circuit(&kZkSpecs[0], &circuit_, &circuit_len_);
+    }
+  }
+
+  static void TearDownTestCase() {
+    if (circuit_) {
+      free(circuit_);
+      circuit_ = nullptr;
+    }
+  }
+
+  static uint8_t *circuit_;
+  static size_t circuit_len_;
+};
+
+uint8_t *SmartAgeTest::circuit_ = nullptr;
+size_t SmartAgeTest::circuit_len_ = 0;
+
+// Test 1: Verify user born in 1998 is <= 2008
+// User (1998) is older than (2008 threshold), so their birthdate is smaller.
+// 1998 <= 2008: TRUE
+TEST_F(SmartAgeTest, VerifyAgeUnderLimit) {
+  // mdoc_tests[2] has birth_date 1968-04-27
+  const MdocTests *test_mdoc = &mdoc_tests[3];
+
+  // RequestedAttribute: birth_date <= 2008-01-01
+  // (verification_type = 1)
+  RequestedAttribute attrs[] = {test::proof_age_over_18_limit_2008};
+
+  uint8_t *zkproof = nullptr;
+  size_t proof_len = 0;
+
+  // Prover
+  MdocProverErrorCode ret = run_mdoc_prover(
+      circuit_, circuit_len_, test_mdoc->mdoc, test_mdoc->mdoc_size,
+      test_mdoc->pkx.as_pointer, test_mdoc->pky.as_pointer,
+      test_mdoc->transcript, test_mdoc->transcript_size, attrs, 1,
+      (const char *)test_mdoc->now, &zkproof, &proof_len, &kZkSpecs[0]);
+
+  EXPECT_EQ(ret, MDOC_PROVER_SUCCESS);
+  if (ret != MDOC_PROVER_SUCCESS)
+    return;
+
+  // Verifier
+  MdocVerifierErrorCode v_ret = run_mdoc_verifier(
+      circuit_, circuit_len_, test_mdoc->pkx.as_pointer,
+      test_mdoc->pky.as_pointer, test_mdoc->transcript,
+      test_mdoc->transcript_size, attrs, 1, (const char *)test_mdoc->now,
+      zkproof, proof_len, test_mdoc->doc_type, &kZkSpecs[0]);
+  EXPECT_EQ(v_ret, MDOC_VERIFIER_SUCCESS);
+  free(zkproof);
+}
+
+// Test 2: Verify user born in 1968 is <= 2008 (Still true, very old)
+TEST_F(SmartAgeTest, VerifyAgeUnderLimitOlder) {
+  // mdoc_tests[2] has birth_date 1968-04-27
+  const MdocTests *test_mdoc = &mdoc_tests[3];
+
+  RequestedAttribute attrs[] = {test::proof_age_over_18_limit_2008};
+
+  uint8_t *zkproof = nullptr;
+  size_t proof_len = 0;
+
+  MdocProverErrorCode ret = run_mdoc_prover(
+      circuit_, circuit_len_, test_mdoc->mdoc, test_mdoc->mdoc_size,
+      test_mdoc->pkx.as_pointer, test_mdoc->pky.as_pointer,
+      test_mdoc->transcript, test_mdoc->transcript_size, attrs, 1,
+      (const char *)test_mdoc->now, &zkproof, &proof_len, &kZkSpecs[0]);
+
+  EXPECT_EQ(ret, MDOC_PROVER_SUCCESS);
+  if (zkproof)
+    free(zkproof);
+}
+
+// Test 3: GEQ test. User born in 1968. Limit 1958.
+// 1968 >= 1958: TRUE.
+// Note: test::proof_age_under_65_limit_1958 uses Type 2 (GEQ).
+TEST_F(SmartAgeTest, VerifyAgeOlderThanLimit) {
+  // mdoc_tests[2] has birth_date 1968-04-27
+  const MdocTests *test_mdoc = &mdoc_tests[3];
+
+  RequestedAttribute attrs[] = {test::proof_age_under_65_limit_1958};
+
+  uint8_t *zkproof = nullptr;
+  size_t proof_len = 0;
+
+  MdocProverErrorCode ret = run_mdoc_prover(
+      circuit_, circuit_len_, test_mdoc->mdoc, test_mdoc->mdoc_size,
+      test_mdoc->pkx.as_pointer, test_mdoc->pky.as_pointer,
+      test_mdoc->transcript, test_mdoc->transcript_size, attrs, 1,
+      (const char *)test_mdoc->now, &zkproof, &proof_len, &kZkSpecs[0]);
+
+  ASSERT_EQ(ret, MDOC_PROVER_SUCCESS);
+
+  MdocVerifierErrorCode v_ret = run_mdoc_verifier(
+      circuit_, circuit_len_, test_mdoc->pkx.as_pointer,
+      test_mdoc->pky.as_pointer, test_mdoc->transcript,
+      test_mdoc->transcript_size, attrs, 1, (const char *)test_mdoc->now,
+      zkproof, proof_len, test_mdoc->doc_type, &kZkSpecs[0]);
+  EXPECT_EQ(v_ret, MDOC_VERIFIER_SUCCESS);
+  free(zkproof);
 }
 
 }  // namespace

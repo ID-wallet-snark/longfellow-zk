@@ -256,6 +256,7 @@ public:
       return false;
     }
     copy_header(dksig_, ndksig);
+    log(INFO, "Found dksig");
 
     // Then parse tagged mso. Skip 5 bytes to skip the D8 18 59 <len2>.
     const uint8_t *pmso = resp + tmso->u_.string.pos + 5;
@@ -265,12 +266,15 @@ public:
       log(ERROR, "Failed to decode MSO map");
       return false;
     }
+    log(INFO, "Decoded MSO map");
+
     auto nv = mso.lookup(pmso, kValidityInfoLen, kValidityInfoID, valid_.ndx);
     if (nv == nullptr) {
       log(ERROR, "Missing validityInfo");
       return false;
     }
     copy_kv_header(valid_, nv);
+    log(INFO, "Found validityInfo");
 
     auto nvf = nv[1].lookup(pmso, kValidFromLen, kValidFromID, valid_from_.ndx);
     if (nvf == nullptr) {
@@ -294,21 +298,27 @@ public:
       return false;
     }
     copy_kv_header(dev_key_info_, ndki);
+    log(INFO, "Found deviceKeyInfo");
 
+    log(INFO, "Looking up deviceKey in deviceKeyInfo");
     auto ndk = ndki[1].lookup(pmso, kDeviceKeyLen, kDeviceKeyID, dev_key_.ndx);
     if (ndk == nullptr) {
       log(ERROR, "Missing deviceKey in deviceKeyInfo");
       return false;
     }
     copy_kv_header(dev_key_, ndk);
+    log(INFO, "Found deviceKey");
 
+    log(INFO, "Looking up pkx in deviceKey");
     auto npkx = ndk[1].lookup_negative(-1, dev_key_pkx_.ndx);
     if (npkx == nullptr) {
       log(ERROR, "Missing deviceKey pkx (-2)");
       return false;
     }
     copy_kv_header(dev_key_pkx_, npkx);
+    log(INFO, "Found pkx");
 
+    log(INFO, "Looking up pky in deviceKey");
     auto npky = ndk[1].lookup_negative(-2, dev_key_pky_.ndx);
     if (npky == nullptr) {
       // Try fallback with N=2 (-1 - 2 = -3) just in case
@@ -319,6 +329,7 @@ public:
       return false;
     }
     copy_kv_header(dev_key_pky_, npky);
+    log(INFO, "Found pky");
 
     auto nvd =
         mso.lookup(pmso, kValueDigestsLen, kValueDigestsID, value_digests_.ndx);
@@ -327,6 +338,7 @@ public:
       return false;
     }
     copy_kv_header(value_digests_, nvd);
+    log(INFO, "Found valueDigests");
 
     // For backwards compatibility with 1f circuits, copy the hard-coded org_
     // if it is present. TODO(shelat): Remove this once all 1f circuits have
@@ -338,6 +350,7 @@ public:
 
     for (auto &attr : attributes_) {
       size_t index;
+      log(INFO, "Checking valueDigest for ns: %s", (const char *)attr.mdl_ns);
       auto nss = nvd[1].lookup(pmso, strlen((const char *)attr.mdl_ns),
                                attr.mdl_ns, index);
       if (nss == nullptr) {
@@ -345,6 +358,7 @@ public:
         return false;
       }
       uint64_t hi = (uint64_t)attr.digest_id;
+      // log(INFO, "Looking up digest ID %lu", hi);
       auto hattr = nss[1].lookup_unsigned(hi, attr.mso.ndx);
       if (hattr == nullptr) {
         log(ERROR, "Missing valueDigest for attr ID %lu", hi);
@@ -352,6 +366,7 @@ public:
       }
       copy_kv_header(attr.mso, hattr);
     }
+    log(INFO, "parse_device_response SUCCESS");
 
     tagged_mso_bytes_.assign(std::begin(kCose1Prefix), std::end(kCose1Prefix));
     // Add 2-byte length
@@ -540,9 +555,13 @@ bool fill_attribute(DenseFiller<Field> &filler, const RequestedAttribute &attr,
   // Append the length of the elementIdentifier.
   append_text_len(vbuf, attr.id_len);
   vbuf.insert(vbuf.end(), attr.id, attr.id + attr.id_len);
-  append_text_len(vbuf, 12); // len of "elementValue"
-  const char *ev = "elementValue";
-  vbuf.insert(vbuf.end(), ev, ev + 12);
+
+  // Pad to 32 bytes.
+  // We exclude 'elementValue' key because map sorting may place it before ID,
+  // making it inaccessible in the witness byte stream starting at ID.
+  while (vbuf.size() < 32) {
+    vbuf.push_back(0);
+  }
 
   vbuf.insert(vbuf.end(), attr.cbor_value,
               attr.cbor_value + attr.cbor_value_len);
@@ -555,8 +574,20 @@ bool fill_attribute(DenseFiller<Field> &filler, const RequestedAttribute &attr,
   for (size_t j = 0; j < vbuf.size() && len < 96; ++j, ++len) {
     fill_byte(v, vbuf[j], len, F);
   }
+
+  if (len >= 64) {
+    log(ERROR,
+        "Attribute length %zu exceeds 63 bytes constraint for Packed Encoding",
+        len);
+    return false;
+  }
+  // Pack verification_type (0, 1, 2) into bits 6 and 7.
+  // 0 -> 00, 1 -> 01 (Bit 6), 2 -> 10 (Bit 7).
+  uint8_t packed_len =
+      static_cast<uint8_t>(len) | (attr.verification_type << 6);
+
   filler.push_back(v);
-  filler.push_back(len, 8, F);
+  filler.push_back(packed_len, 8, F);
   return true;
 }
 
@@ -732,9 +763,11 @@ public:
       return false;
     }
 
+    log(INFO, "Starting compute_witness logic");
     check(version >= 4, "Version <4 is not supported");
 
     std::vector<uint8_t> buf;
+    log(INFO, "Checking MSO len: %zu", pm_.t_mso_.len);
     if (pm_.t_mso_.len >= kMaxSHABlocks * 64 - 9 - kCose1PrefixLen) {
       log(ERROR, "tagged mso is too big: %zu", pm_.t_mso_.len);
       return false;
@@ -748,8 +781,10 @@ public:
       buf.push_back(mdoc[pm_.t_mso_.pos + i]);
     }
 
+    log(INFO, "Computing SHA witness for MSO");
     FlatSHA256Witness::transform_and_witness_message(
         buf.size(), buf.data(), kMaxSHABlocks, numb_, signed_bytes_, bw_);
+    log(INFO, "Computed SHA witness");
 
     ECNat ne = nat_from_u32<ECNat>(bw_[numb_ - 1].h1);
     e_ = ec_.f_.to_montgomery(ne);
@@ -771,12 +806,26 @@ public:
     atw_.resize(attrs_len);
 
     // Match the attributes with the witnesses from the deviceResponse.
+    log(INFO, "Compute Witness: Matching %zu attributes", attrs_len);
     for (size_t i = 0; i < attrs_len; ++i) {
       attr_bytes_[i].resize(128);
       atw_[i].resize(2);
       bool found = false;
+      log(INFO, "Looking for attribute %.*s (len=%zu)", (int)attrs[i].id_len,
+          attrs[i].id, attrs[i].id_len);
       for (auto fa : pm_.attributes_) {
+        log(INFO,
+            "Checking against found attr at index %zu, ID len: %zu, ID: %.*s",
+            fa.id_ind, fa.id_len, (int)fa.id_len, fa.doc + fa.id_ind);
         if (fa == attrs[i]) {
+          log(INFO, "Found match! Val len: %zu", fa.val_len);
+          // Log first few bytes of value to verify prefix and year
+          if (fa.val_len >= 8) {
+            const uint8_t *val_ptr = fa.doc + fa.val_ind;
+            log(INFO, "Val prefix: %02x %02x %02x %02x %02x %02x %02x %02x",
+                val_ptr[0], val_ptr[1], val_ptr[2], val_ptr[3], val_ptr[4],
+                val_ptr[5], val_ptr[6], val_ptr[7]);
+          }
           FlatSHA256Witness::transform_and_witness_message(
               fa.tag_len, &fa.doc[fa.tag_ind], 2, attr_n_[i],
               &attr_bytes_[i][0], &atw_[i][0]);
@@ -791,12 +840,13 @@ public:
           attr_ei_[i].len = fa.witness_length(attrs[i]);
           attr_ev_[i].offset = fa.val_ind - fa.tag_ind;
           attr_ev_[i].len = fa.val_len;
+
           found = true;
           break;
         }
       }
       if (!found) {
-        log(ERROR, "Could not find attribute %.*s", attrs[i].id_len,
+        log(ERROR, "Could not find attribute %.*s", (int)attrs[i].id_len,
             attrs[i].id);
         return false;
       }
