@@ -80,6 +80,12 @@ target_link_libraries(student_card_test mdoc_static)
 proofs_add_testing_libraries(student_card_test)
 target_link_libraries(student_card_test crypto zstd)
 
+add_executable(sex_test sex_test.cc)
+target_link_libraries(sex_test mdoc_static)
+proofs_add_testing_libraries(sex_test)
+target_link_libraries(sex_test crypto zstd)
+
+
 set(installable_libs mdoc_static)
 install(TARGETS ${installable_libs} DESTINATION lib)
 install(FILES mdoc_zk.h DESTINATION include)

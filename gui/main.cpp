@@ -35,6 +35,7 @@ struct AppState {
   // Proof settings
   bool prove_age = true;
   bool prove_nationality = false;
+  bool prove_sex = false;
   bool prove_french_license = false;
 
   // Health Pass / Issuer Settings
@@ -51,6 +52,7 @@ struct AppState {
   bool prove_category_C = false;
 
   int age_threshold = 18;
+  int selected_sex = 0; // 0: Male, 1: Female
 
   // Calculated age based on birth date
   int calculated_age = 19;
@@ -224,6 +226,7 @@ void GenerateZKProofAsync(AppState &state) {
   config.birth_day = state.birth_day;
   config.prove_age = state.prove_age;
   config.prove_nationality = state.prove_nationality;
+  config.prove_sex = state.prove_sex;
   config.prove_french_license = state.prove_french_license;
   config.prove_student_status = state.prove_student_status;
   config.prove_health_issuer = state.prove_health_issuer;
@@ -236,6 +239,7 @@ void GenerateZKProofAsync(AppState &state) {
   config.prove_category_C = state.prove_category_C;
   config.age_threshold = state.age_threshold;
   config.selected_nationality = state.selected_nationality;
+  config.selected_sex = state.selected_sex;
   config.circuit_cache_1attr = &state.circuit_cache_1attr;
   config.circuit_cache_2attr = &state.circuit_cache_2attr;
 
@@ -613,225 +617,280 @@ void RenderMainWindow(AppState &state) {
       ImGui::EndTabItem();
     }
 
-    // TAB 4: Student ID
-    if (ImGui::BeginTabItem("Student ID")) {
-      state.prove_student_status = true;
-      state.prove_french_license = false;
-      state.prove_health_issuer = false;
-      state.prove_age = false;
-      state.prove_nationality = false;
+      // TAB 4: Student ID
+      if (ImGui::BeginTabItem("Student ID")) {
+        state.prove_student_status = true;
+        state.prove_french_license = false;
+        state.prove_health_issuer = false;
+        state.prove_age = false;
+        state.prove_nationality = false;
+        state.prove_sex = false; // Reset sex proof
 
-      ImGui::Spacing();
-      ImGui::TextColored(state.accent_color, "Student Status Verification");
-      ImGui::TextWrapped("Verify active student status using the Ministry of "
-                         "Education credentials.");
+        ImGui::Spacing();
+        ImGui::TextColored(state.accent_color, "Student Status Verification");
+        ImGui::TextWrapped("Verify active student status using the Ministry of "
+                           "Education credentials.");
 
-      ImGui::Spacing();
-      ImGui::Separator();
-      ImGui::Spacing();
-
-      ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.15f, 0.16f, 0.20f, 1.0f));
-      if (ImGui::CollapsingHeader("Education Credentials",
-                                  ImGuiTreeNodeFlags_DefaultOpen)) {
-        ImGui::Indent(10);
+        ImGui::Spacing();
+        ImGui::Separator();
         ImGui::Spacing();
 
-        ImGui::Checkbox("Verify 'is_student' attribute",
-                        &state.prove_student_status);
-        ImGui::SameLine();
-        ImGui::TextDisabled("(?)");
-        if (ImGui::IsItemHovered()) {
-          ImGui::SetTooltip("Checks for the presence of the signed "
-                            "'is_student' boolean attribute.");
+        ImGui::PushStyleColor(ImGuiCol_Header,
+                              ImVec4(0.15f, 0.16f, 0.20f, 1.0f));
+        if (ImGui::CollapsingHeader("Education Credentials",
+                                    ImGuiTreeNodeFlags_DefaultOpen)) {
+          ImGui::Indent(10);
+          ImGui::Spacing();
+
+          ImGui::Checkbox("Verify 'is_student' attribute",
+                          &state.prove_student_status);
+          ImGui::SameLine();
+          ImGui::TextDisabled("(?)");
+          if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Checks for the presence of the signed "
+                              "'is_student' boolean attribute.");
+          }
+
+          ImGui::Spacing();
+          ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "Note:");
+          ImGui::TextWrapped("Requires a valid mDoc signed by the Ministry of "
+                             "Education. (Not available in test data)");
+
+          ImGui::Unindent(10);
+          ImGui::Spacing();
         }
-
-        ImGui::Spacing();
-        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "Note:");
-        ImGui::TextWrapped("Requires a valid mDoc signed by the Ministry of "
-                           "Education. (Not available in test data)");
-
-        ImGui::Unindent(10);
-        ImGui::Spacing();
+        ImGui::PopStyleColor();
+        ImGui::EndTabItem();
       }
+
+      // TAB 5: Gender Verification
+      if (ImGui::BeginTabItem("Gender Verification")) {
+        state.prove_sex = true;
+        state.prove_age = false;
+        state.prove_nationality = false;
+        state.prove_french_license = false;
+        state.prove_health_issuer = false;
+        state.prove_student_status = false;
+
+        ImGui::Spacing();
+        ImGui::TextColored(state.accent_color, "Gender Verification");
+        ImGui::TextWrapped("Prove your sex/gender using Zero-Knowledge proofs "
+                           "without revealing other personal information.");
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        ImGui::PushStyleColor(ImGuiCol_Header,
+                              ImVec4(0.15f, 0.16f, 0.20f, 1.0f));
+        if (ImGui::CollapsingHeader("Sex Selection",
+                                    ImGuiTreeNodeFlags_DefaultOpen)) {
+          ImGui::Indent(10);
+          ImGui::Spacing();
+
+          const char *sex_options[] = {"Male (M)", "Female (F)"};
+          ImGui::Text("Select sex attribute to prove:");
+          ImGui::Spacing();
+          ImGui::Combo("##SexCombo", &state.selected_sex, sex_options,
+                       IM_ARRAYSIZE(sex_options));
+
+          ImGui::Spacing();
+          ImGui::Separator();
+          ImGui::Spacing();
+
+          ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f),
+                             "Privacy Guarantee:");
+          ImGui::TextWrapped(
+              "The ZK proof will only reveal that your sex matches the "
+              "selected value. No other personal data (name, birth date, "
+              "document number) is disclosed.");
+
+          ImGui::Spacing();
+          ImGui::TextDisabled("* Note: Only binary sex values (M/F) are "
+                              "supported as per ISO 18013-5 standard");
+          ImGui::Unindent(10);
+          ImGui::Spacing();
+        }
+        ImGui::PopStyleColor();
+        ImGui::EndTabItem();
+      }
+
+      ImGui::EndTabBar();
+    }
+
+    ImGui::Spacing();
+    ImGui::Spacing();
+
+    // Action Buttons Area
+    float button_height = 45.0f;
+    if (state.is_generating) {
+      ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+      ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.2f, 0.2f, 0.5f));
+      ImGui::Button("GENERATING...",
+                    ImVec2(ImGui::GetContentRegionAvail().x, button_height));
       ImGui::PopStyleColor();
-      ImGui::EndTabItem();
-    }
-
-    ImGui::EndTabBar();
-  }
-
-  ImGui::Spacing();
-  ImGui::Spacing();
-
-  // Action Buttons Area
-  float button_height = 45.0f;
-  if (state.is_generating) {
-    ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.2f, 0.2f, 0.5f));
-    ImGui::Button("GENERATING...",
-                  ImVec2(ImGui::GetContentRegionAvail().x, button_height));
-    ImGui::PopStyleColor();
-    ImGui::PopItemFlag();
-  } else {
-    ImGui::PushStyleColor(ImGuiCol_Button, state.accent_color);
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered,
-                          ImVec4(0.3f, 0.7f, 1.0f, 1.0f));
-    if (ImGui::Button("GENERATE PROOF", ImVec2(ImGui::GetContentRegionAvail().x,
-                                               button_height))) {
-      GenerateZKProofAsync(state);
-    }
-    ImGui::PopStyleColor(2);
-  }
-
-  ImGui::EndChild(); // End Controls
-  ImGui::PopStyleVar();
-
-  ImGui::NextColumn();
-
-  // RIGHT COLUMN: Log & Status
-  // --------------------------
-  ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.05f, 0.05f, 0.05f, 1.0f));
-  ImGui::BeginChild("LogPanel", ImVec2(0, 0), false);
-
-  // Status Bar at Top of Right Column
-  ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.12f, 0.13f, 0.16f, 1.0f));
-  ImGui::BeginChild("StatusBar", ImVec2(0, 80), false);
-  {
-    ImGui::SetCursorPos(ImVec2(15, 15));
-    ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "CURRENT STATUS");
-
-    ImGui::SetCursorPos(ImVec2(15, 35));
-    if (state.status_message.empty()) {
-      ImGui::Text("Ready");
+      ImGui::PopItemFlag();
     } else {
-      // Simple color coding based on content
-      ImVec4 statusColor = ImVec4(1, 1, 1, 1);
-      if (state.status_message.find("✓") != std::string::npos ||
-          state.status_message.find("[OK]") != std::string::npos)
-        statusColor = ImVec4(0.4f, 1.0f, 0.4f, 1.0f);
-      else if (state.status_message.find("fail") != std::string::npos ||
-               state.status_message.find("Error") != std::string::npos ||
-               state.status_message.find("❌") != std::string::npos)
-        statusColor = ImVec4(1.0f, 0.4f, 0.4f, 1.0f);
-      else if (state.status_message.find("Generating") != std::string::npos)
-        statusColor = ImVec4(1.0f, 0.8f, 0.2f, 1.0f);
-
-      ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[0]);
-      ImGui::TextColored(statusColor, "%s", state.status_message.c_str());
-      ImGui::PopFont();
-    }
-  }
-  ImGui::EndChild();
-  ImGui::PopStyleColor();
-
-  // Proof Details (if available)
-  if (state.proof_data.is_valid) {
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10, 10));
-    ImGui::BeginChild("ProofActions", ImVec2(0, 60), false);
-    ImGui::SetCursorPos(ImVec2(10, 10));
-
-    if (ImGui::Button("EXPORT JSON", ImVec2(120, 35))) {
-      if (ExportProofWrapper(state, "proof.json")) {
-        LogMessage(state, "Proof exported to proof.json");
+      ImGui::PushStyleColor(ImGuiCol_Button, state.accent_color);
+      ImGui::PushStyleColor(ImGuiCol_ButtonHovered,
+                            ImVec4(0.3f, 0.7f, 1.0f, 1.0f));
+      if (ImGui::Button(
+              "GENERATE PROOF",
+              ImVec2(ImGui::GetContentRegionAvail().x, button_height))) {
+        GenerateZKProofAsync(state);
       }
+      ImGui::PopStyleColor(2);
     }
-    ImGui::SameLine();
-    if (ImGui::Button("VERIFY AGAIN", ImVec2(120, 35))) {
-      VerifyZKProof(state);
+
+    ImGui::EndChild(); // End Controls
+    ImGui::PopStyleVar();
+
+    ImGui::NextColumn();
+
+    // RIGHT COLUMN: Log & Status
+    // --------------------------
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.05f, 0.05f, 0.05f, 1.0f));
+    ImGui::BeginChild("LogPanel", ImVec2(0, 0), false);
+
+    // Status Bar at Top of Right Column
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.12f, 0.13f, 0.16f, 1.0f));
+    ImGui::BeginChild("StatusBar", ImVec2(0, 80), false);
+    {
+      ImGui::SetCursorPos(ImVec2(15, 15));
+      ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "CURRENT STATUS");
+
+      ImGui::SetCursorPos(ImVec2(15, 35));
+      if (state.status_message.empty()) {
+        ImGui::Text("Ready");
+      } else {
+        // Simple color coding based on content
+        ImVec4 statusColor = ImVec4(1, 1, 1, 1);
+        if (state.status_message.find("✓") != std::string::npos ||
+            state.status_message.find("[OK]") != std::string::npos)
+          statusColor = ImVec4(0.4f, 1.0f, 0.4f, 1.0f);
+        else if (state.status_message.find("fail") != std::string::npos ||
+                 state.status_message.find("Error") != std::string::npos ||
+                 state.status_message.find("❌") != std::string::npos)
+          statusColor = ImVec4(1.0f, 0.4f, 0.4f, 1.0f);
+        else if (state.status_message.find("Generating") != std::string::npos)
+          statusColor = ImVec4(1.0f, 0.8f, 0.2f, 1.0f);
+
+        ImGui::PushFont(ImGui::GetIO().Fonts->Fonts[0]);
+        ImGui::TextColored(statusColor, "%s", state.status_message.c_str());
+        ImGui::PopFont();
+      }
     }
     ImGui::EndChild();
-    ImGui::PopStyleVar();
+    ImGui::PopStyleColor();
+
+    // Proof Details (if available)
+    if (state.proof_data.is_valid) {
+      ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10, 10));
+      ImGui::BeginChild("ProofActions", ImVec2(0, 60), false);
+      ImGui::SetCursorPos(ImVec2(10, 10));
+
+      if (ImGui::Button("EXPORT JSON", ImVec2(120, 35))) {
+        if (ExportProofWrapper(state, "proof.json")) {
+          LogMessage(state, "Proof exported to proof.json");
+        }
+      }
+      ImGui::SameLine();
+      if (ImGui::Button("VERIFY AGAIN", ImVec2(120, 35))) {
+        VerifyZKProof(state);
+      }
+      ImGui::EndChild();
+      ImGui::PopStyleVar();
+    }
+
+    // Log Output
+    ImGui::Separator();
+    ImGui::PushStyleColor(ImGuiCol_ChildBg,
+                          ImVec4(0.0f, 0.0f, 0.0f, 0.0f)); // Transparent
+    ImGui::BeginChild("LogList", ImVec2(0, 0), true);
+    {
+      ImGui::Indent(10);
+      ImGui::Spacing();
+      ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "SYSTEM LOG");
+      ImGui::Spacing();
+
+      std::lock_guard<std::recursive_mutex> lock(state.mutex);
+      ImGui::TextUnformatted(state.log.c_str());
+      if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
+        ImGui::SetScrollHereY(1.0f);
+    }
+    ImGui::EndChild();
+    ImGui::PopStyleColor();
+
+    ImGui::EndChild(); // End LogPanel
+    ImGui::PopStyleColor();
+
+    ImGui::EndChild(); // End MainContent
+    ImGui::End();
   }
 
-  // Log Output
-  ImGui::Separator();
-  ImGui::PushStyleColor(ImGuiCol_ChildBg,
-                        ImVec4(0.0f, 0.0f, 0.0f, 0.0f)); // Transparent
-  ImGui::BeginChild("LogList", ImVec2(0, 0), true);
-  {
-    ImGui::Indent(10);
-    ImGui::Spacing();
-    ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "SYSTEM LOG");
-    ImGui::Spacing();
+  int main(int, char **) {
+    // Note: Log level might be handled inside zk_workflow if needed, or here
+    // globally
+    proofs::set_log_level(proofs::INFO);
 
-    std::lock_guard<std::recursive_mutex> lock(state.mutex);
-    ImGui::TextUnformatted(state.log.c_str());
-    if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
-      ImGui::SetScrollHereY(1.0f);
+    glfwSetErrorCallback(glfw_error_callback);
+    if (!glfwInit())
+      return 1;
+
+    const char *glsl_version = "#version 330";
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+    GLFWwindow *window =
+        glfwCreateWindow(1080, 720, "Longfellow ZK", nullptr, nullptr);
+    if (window == nullptr)
+      return 1;
+
+    glfwMakeContextCurrent(window);
+    glfwSwapInterval(1);
+
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO &io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+
+    // Setup Custom Style
+    SetupStyle();
+
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init(glsl_version);
+
+    AppState state;
+    LogMessage(state, "Welcome to Longfellow ZK Identity Verification");
+    LogMessage(state, "System initialized. Ready to generate proofs.");
+
+    while (!glfwWindowShouldClose(window)) {
+      glfwPollEvents();
+
+      ImGui_ImplOpenGL3_NewFrame();
+      ImGui_ImplGlfw_NewFrame();
+      ImGui::NewFrame();
+
+      RenderMainWindow(state);
+
+      ImGui::Render();
+      int display_w, display_h;
+      glfwGetFramebufferSize(window, &display_w, &display_h);
+      glViewport(0, 0, display_w, display_h);
+      glClearColor(0.10f, 0.11f, 0.14f, 1.0f); // Match WindowBg
+      glClear(GL_COLOR_BUFFER_BIT);
+      ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+      glfwSwapBuffers(window);
+    }
+
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+
+    glfwDestroyWindow(window);
+    glfwTerminate();
+
+    return 0;
   }
-  ImGui::EndChild();
-  ImGui::PopStyleColor();
-
-  ImGui::EndChild(); // End LogPanel
-  ImGui::PopStyleColor();
-
-  ImGui::EndChild(); // End MainContent
-  ImGui::End();
-}
-
-int main(int, char **) {
-  // Note: Log level might be handled inside zk_workflow if needed, or here
-  // globally
-  proofs::set_log_level(proofs::INFO);
-
-  glfwSetErrorCallback(glfw_error_callback);
-  if (!glfwInit())
-    return 1;
-
-  const char *glsl_version = "#version 330";
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-  GLFWwindow *window =
-      glfwCreateWindow(1080, 720, "Longfellow ZK", nullptr, nullptr);
-  if (window == nullptr)
-    return 1;
-
-  glfwMakeContextCurrent(window);
-  glfwSwapInterval(1);
-
-  IMGUI_CHECKVERSION();
-  ImGui::CreateContext();
-  ImGuiIO &io = ImGui::GetIO();
-  io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-
-  // Setup Custom Style
-  SetupStyle();
-
-  ImGui_ImplGlfw_InitForOpenGL(window, true);
-  ImGui_ImplOpenGL3_Init(glsl_version);
-
-  AppState state;
-  LogMessage(state, "Welcome to Longfellow ZK Identity Verification");
-  LogMessage(state, "System initialized. Ready to generate proofs.");
-
-  while (!glfwWindowShouldClose(window)) {
-    glfwPollEvents();
-
-    ImGui_ImplOpenGL3_NewFrame();
-    ImGui_ImplGlfw_NewFrame();
-    ImGui::NewFrame();
-
-    RenderMainWindow(state);
-
-    ImGui::Render();
-    int display_w, display_h;
-    glfwGetFramebufferSize(window, &display_w, &display_h);
-    glViewport(0, 0, display_w, display_h);
-    glClearColor(0.10f, 0.11f, 0.14f, 1.0f); // Match WindowBg
-    glClear(GL_COLOR_BUFFER_BIT);
-    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-    glfwSwapBuffers(window);
-  }
-
-  ImGui_ImplOpenGL3_Shutdown();
-  ImGui_ImplGlfw_Shutdown();
-  ImGui::DestroyContext();
-
-  glfwDestroyWindow(window);
-  glfwTerminate();
-
-  return 0;
-}

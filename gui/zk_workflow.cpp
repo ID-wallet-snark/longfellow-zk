@@ -129,7 +129,6 @@ RequestedAttribute CreateInsuranceAttribute(const char *status) {
 
 RequestedAttribute CreateStudentAttribute() {
   RequestedAttribute attr;
-  // Namespace: fr.gouv.education.1
   const char *ns = "fr.gouv.education.1";
   size_t ns_len = strlen(ns);
   memcpy(attr.namespace_id, ns, ns_len);
@@ -141,6 +140,25 @@ RequestedAttribute CreateStudentAttribute() {
 
   attr.cbor_value[0] = 0xf5; // true
   attr.cbor_value_len = 1;
+
+  return attr;
+}
+
+RequestedAttribute CreateSexAttribute(const char *sex_code) {
+  RequestedAttribute attr;
+  const char *ns = "org.iso.18013.5.1";
+  size_t ns_len = strlen(ns);
+  memcpy(attr.namespace_id, ns, ns_len);
+  attr.namespace_len = ns_len;
+
+  const char *id = "sex";
+  memcpy(attr.id, id, strlen(id));
+  attr.id_len = strlen(id);
+
+  // CBOR encoding: 0x61 (text string length 1) + 'M' or 'F'
+  attr.cbor_value[0] = 0x61;
+  attr.cbor_value[1] = sex_code[0];
+  attr.cbor_value_len = 2;
 
   return attr;
 }
@@ -299,6 +317,11 @@ bool PerformZKProofGeneration(const ProverConfig &config, ProofData &proof_out,
         attributes.push_back(CreateNationalityAttribute(target_nat.c_str()));
         Log("  ✓ Attribute: nationality = " + target_nat);
       }
+      if (config.prove_sex) {
+        std::string sex_code = (config.selected_sex == 0) ? "M" : "F";
+        attributes.push_back(CreateSexAttribute(sex_code.c_str()));
+        Log("  ✓ Attribute: sex = " + sex_code);
+      }
     }
 
     if (attributes.empty()) {
@@ -424,12 +447,10 @@ bool PerformZKProofGeneration(const ProverConfig &config, ProofData &proof_out,
         proof_out.attributes_proven.push_back("Vaccine: Comirnaty (Pfizer)");
       if (config.prove_insurance)
         proof_out.attributes_proven.push_back("Insurance: Active");
-    } else if (config.prove_student_status) {
-      proof_out.attributes_proven.push_back("Student Status: Verified");
     } else {
       if (config.prove_age)
-        proof_out.attributes_proven.push_back(
-            "age_over_" + std::to_string(config.age_threshold));
+        proof_out.attributes_proven.push_back("age_over_" +
+                                              std::to_string(config.age_threshold));
       if (config.prove_nationality) {
         std::string nat_str = "250";
         if (config.selected_nationality >= 0 &&
@@ -437,6 +458,10 @@ bool PerformZKProofGeneration(const ProverConfig &config, ProofData &proof_out,
           nat_str = kCountries[config.selected_nationality].numeric;
         }
         proof_out.attributes_proven.push_back("nationality_" + nat_str);
+      }
+      if (config.prove_sex) {
+        std::string sex_str = (config.selected_sex == 0) ? "M" : "F";
+        proof_out.attributes_proven.push_back("sex_" + sex_str);
       }
     }
 

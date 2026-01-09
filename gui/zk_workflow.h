@@ -45,6 +45,7 @@ struct ProverConfig {
     int birth_day;
     bool prove_age;
     bool prove_nationality;
+    bool prove_sex;
     bool prove_french_license;
     bool prove_health_issuer;
     bool prove_vaccine;
@@ -56,6 +57,7 @@ struct ProverConfig {
     bool prove_category_C;
     int age_threshold;
     int selected_nationality;
+    int selected_sex;
     
     // Cache references (pointers to cache in AppState)
     // In a full refactor, cache should be managed by the workflow too, 
@@ -71,6 +73,7 @@ struct ProverConfig {
 // Attribute Helpers
 RequestedAttribute CreateAgeAttribute(int age_threshold);
 RequestedAttribute CreateNationalityAttribute(const char *nationality);
+RequestedAttribute CreateSexAttribute(const char *sex_code);
 RequestedAttribute CreateIssuerAttribute(const char *issuer_code);
 RequestedAttribute CreateVaccineAttribute(const char *vaccine_code);
 RequestedAttribute CreateInsuranceAttribute(const char *status);
