@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -e
 
 echo "Cleaning build directory..."
@@ -7,10 +7,10 @@ mkdir build
 cd build
 
 echo "Configuring with CMake..."
-cmake .. -DCMAKE_BUILD_TYPE=Release -DBENCHMARK_ENABLE_WERROR=OFF
+cmake .. -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release -DBENCHMARK_ENABLE_WERROR=OFF
 
 echo "Building..."
-make -j4 mdoc_benchmark smart_age_test age_over_18_benchmark
+ninja mdoc_benchmark smart_age_test age_over_18_benchmark
 
 echo "Running smart_age_test..."
 ./lib/circuits/mdoc/smart_age_test
