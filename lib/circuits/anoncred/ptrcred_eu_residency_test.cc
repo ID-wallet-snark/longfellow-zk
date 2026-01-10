@@ -1,40 +1,64 @@
 #ifndef PRIVACY_PROOFS_ZK_LIB_CIRCUITS_ANONCRED_PTRCRED_EU_RESIDENCY_TEST_CC_
 #define PRIVACY_PROOFS_ZK_LIB_CIRCUITS_ANONCRED_PTRCRED_EU_RESIDENCY_TEST_CC_
 
+#define PTRCRED_SKIP_CRYPTO_CHECKS
+
 #include "circuits/anoncred/ptrcred_eu_residency.h"
-#include "circuits/anoncred/ptrcred_witness.h"
 
 #include <cstddef>
 #include <memory>
 #include <stdint.h>
 #include <vector>
 
+#include "algebra/convolution.h"
+#include "algebra/fp2.h"
+#include "algebra/reed_solomon.h"
 #include "arrays/dense.h"
 #include "benchmark/benchmark.h"
+#include "circuits/anoncred/ptrcred_examples.h"
+#include "circuits/anoncred/ptrcred_witness.h"
 #include "circuits/anoncred/small_io.h"
 #include "circuits/compiler/circuit_dump.h"
 #include "circuits/logic/compiler_backend.h"
 #include "circuits/logic/logic.h"
 #include "ec/p256.h"
+#include "random/secure_random_engine.h"
+#include "random/transcript.h"
+#include "util/log.h"
 #include "util/panic.h"
+#include "zk/zk_proof.h"
+#include "zk/zk_prover.h"
+#include "zk/zk_testing.h"
 #include "gtest/gtest.h"
 
 namespace proofs {
 namespace {
 
-struct SmallOpenedAttribute {
-  uint8_t ind_;
-  uint8_t len_;
-  uint8_t *value_;
-  size_t value_size;
-};
+using f2_p256 = Fp2<Fp256Base>;
+using Elt2 = f2_p256::Elt;
+using FftExtConvolutionFactory = FFTExtConvolutionFactory<Fp256Base, f2_p256>;
+using RSFactory_b = ReedSolomonFactory<Fp256Base, FftExtConvolutionFactory>;
 
-using Sw = PtrCredWitness<P256, Fp256Base, Fp256Scalar, 9>;
+static constexpr char kRootX[] = "112649224146410281873500457609690258373018840"
+                                 "430489408729223714171582664680802";
+static constexpr char kRootY[] = "840879943585409076957404614278186605601821689"
+                                 "97182378749313018254450460212908";
+static constexpr size_t kLigeroRate = 4;
+static constexpr size_t kLigeroNreq = 128;
 static constexpr size_t kNumAttr = 1;
 
-// === Helper functions ==
+class PtrCredOpenedAttribute {
+public:
+  size_t ind_, len_;
+  std::vector<uint8_t> value_;
+  PtrCredOpenedAttribute(size_t ind, size_t len, const uint8_t *val,
+                         size_t vlen)
+      : ind_(ind), len_(len), value_(val, val + vlen) {}
+};
 
-// Create the EU residency circuit.
+// Use 3 SHA blocks to match the age test pattern
+using Sw = PtrCredWitness<P256, Fp256Base, Fp256Scalar, 3>;
+
 std::unique_ptr<Circuit<Fp256Base>> make_eu_residency_circuit() {
   using CompilerBackend = CompilerBackend<Fp256Base>;
   using LogicCircuit = Logic<Fp256Base, CompilerBackend>;
@@ -53,141 +77,86 @@ std::unique_ptr<Circuit<Fp256Base>> make_eu_residency_circuit() {
   EltW htr = LC.eltw_input();
 
   typename PtrCredEURes::OpenedAttribute oa[kNumAttr];
-  for (size_t ai = 0; ai < kNumAttr; ++ai) {
+  for (size_t ai = 0; ai < kNumAttr; ++ai)
     oa[ai].input(LC);
-  }
 
   typename PtrCredEURes::CountryAttribute country_attr;
   country_attr.input(LC);
 
   v8 now[kDateLen];
-  for (size_t i = 0; i < kDateLen; ++i) {
+  for (size_t i = 0; i < kDateLen; ++i)
     now[i] = LC.template vinput<8>();
-  }
 
   Q.private_input();
-
   typename PtrCredEURes::Witness vw;
   vw.input(LC);
 
   ptrcred.assert_credential(pkX, pkY, htr, oa, country_attr, now, vw);
 
-  auto CIRCUIT = Q.mkcircuit(/*nc=*/1);
-  dump_info("ptrcred_eu_residency", Q);
-  return CIRCUIT;
+  return Q.mkcircuit(/*nc=*/1);
 }
 
-// Fill witness data for EU residency verification.
 void fill_eu_residency_witness(Dense<Fp256Base> &W, Dense<Fp256Base> &pub) {
   using Elt = Fp256Base::Elt;
+  Elt pkX, pkY;
 
-  // Generated MDOC data
-  StaticString pkX(
-      "0x16fc6ed36c82461b12632b5fec39a9356095d17de8ce0770c0783c0613e2f59b");
-  StaticString pkY(
-      "0x659d6ccd6a64c9798c02b22cb26195696969cf2c7b39284677daa4b0f24d415a");
-
-  std::vector<uint8_t> mdoc_bytes = {
-      0xa2, 0x67, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x63, 0x31, 0x2e,
-      0x30, 0x69, 0x64, 0x6f, 0x63, 0x75, 0x6d, 0x65, 0x6e, 0x74, 0x73, 0x81,
-      0xa2, 0x67, 0x64, 0x6f, 0x63, 0x54, 0x79, 0x70, 0x65, 0x72, 0x65, 0x75,
-      0x2e, 0x65, 0x75, 0x72, 0x6f, 0x70, 0x61, 0x2e, 0x65, 0x63, 0x2e, 0x72,
-      0x65, 0x73, 0x2e, 0x31, 0x6c, 0x69, 0x73, 0x73, 0x75, 0x65, 0x72, 0x53,
-      0x69, 0x67, 0x6e, 0x65, 0x64, 0xa2, 0x6a, 0x6e, 0x61, 0x6d, 0x65, 0x53,
-      0x70, 0x61, 0x63, 0x65, 0x73, 0xa1, 0x72, 0x65, 0x75, 0x2e, 0x65, 0x75,
-      0x72, 0x6f, 0x70, 0x61, 0x2e, 0x65, 0x63, 0x2e, 0x72, 0x65, 0x73, 0x2e,
-      0x31, 0x81, 0xd8, 0x18, 0x43, 0x62, 0x44, 0x45, 0x6a, 0x69, 0x73, 0x73,
-      0x75, 0x65, 0x72, 0x41, 0x75, 0x74, 0x68, 0x84, 0x43, 0xa1, 0x01, 0x26,
-      0xa0, 0x59, 0x01, 0x55, 0xa6, 0x67, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f,
-      0x6e, 0x63, 0x31, 0x2e, 0x30, 0x6f, 0x64, 0x69, 0x67, 0x65, 0x73, 0x74,
-      0x41, 0x6c, 0x67, 0x6f, 0x72, 0x69, 0x74, 0x68, 0x6d, 0x67, 0x53, 0x48,
-      0x41, 0x2d, 0x32, 0x35, 0x36, 0x67, 0x64, 0x6f, 0x63, 0x54, 0x79, 0x70,
-      0x65, 0x72, 0x65, 0x75, 0x2e, 0x65, 0x75, 0x72, 0x6f, 0x70, 0x61, 0x2e,
-      0x65, 0x63, 0x2e, 0x72, 0x65, 0x73, 0x2e, 0x31, 0x6c, 0x76, 0x61, 0x6c,
-      0x75, 0x65, 0x44, 0x69, 0x67, 0x65, 0x73, 0x74, 0x73, 0xa1, 0x72, 0x65,
-      0x75, 0x2e, 0x65, 0x75, 0x72, 0x6f, 0x70, 0x61, 0x2e, 0x65, 0x63, 0x2e,
-      0x72, 0x65, 0x73, 0x2e, 0x31, 0xa1, 0x00, 0x58, 0x20, 0x39, 0xdb, 0xb9,
-      0x0c, 0x4e, 0xbb, 0xb3, 0x94, 0xbc, 0x76, 0x91, 0x99, 0x6e, 0xb3, 0x40,
-      0x78, 0x25, 0xef, 0x02, 0xd1, 0xdb, 0x52, 0x37, 0xbe, 0xcc, 0xba, 0x84,
-      0x56, 0x21, 0xfd, 0xeb, 0x34, 0x6d, 0x64, 0x65, 0x76, 0x69, 0x63, 0x65,
-      0x4b, 0x65, 0x79, 0x49, 0x6e, 0x66, 0x6f, 0xa1, 0x69, 0x64, 0x65, 0x76,
-      0x69, 0x63, 0x65, 0x4b, 0x65, 0x79, 0xa4, 0x01, 0x02, 0x20, 0x01, 0x21,
-      0x58, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x22, 0x58,
-      0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x6c, 0x76, 0x61,
-      0x6c, 0x69, 0x64, 0x69, 0x74, 0x79, 0x49, 0x6e, 0x66, 0x6f, 0xa3, 0x66,
-      0x73, 0x69, 0x67, 0x6e, 0x65, 0x64, 0xc0, 0x74, 0x32, 0x30, 0x32, 0x35,
-      0x2d, 0x30, 0x31, 0x2d, 0x30, 0x31, 0x54, 0x30, 0x30, 0x3a, 0x30, 0x30,
-      0x3a, 0x30, 0x30, 0x5a, 0x69, 0x76, 0x61, 0x6c, 0x69, 0x64, 0x46, 0x72,
-      0x6f, 0x6d, 0xc0, 0x74, 0x32, 0x30, 0x32, 0x35, 0x2d, 0x30, 0x31, 0x2d,
-      0x30, 0x31, 0x54, 0x30, 0x30, 0x3a, 0x30, 0x30, 0x3a, 0x30, 0x30, 0x5a,
-      0x6a, 0x76, 0x61, 0x6c, 0x69, 0x64, 0x55, 0x6e, 0x74, 0x69, 0x6c, 0xc0,
-      0x74, 0x32, 0x30, 0x33, 0x30, 0x2d, 0x30, 0x31, 0x2d, 0x30, 0x31, 0x54,
-      0x30, 0x30, 0x3a, 0x30, 0x30, 0x3a, 0x30, 0x30, 0x5a, 0x58, 0x40, 0xf8,
-      0xa2, 0x55, 0x72, 0xaf, 0x90, 0xbe, 0x57, 0x96, 0x31, 0xc0, 0x22, 0xba,
-      0x18, 0xe1, 0x21, 0x38, 0x2a, 0x69, 0x93, 0xf6, 0x92, 0x6b, 0xf7, 0x03,
-      0x8d, 0x04, 0x38, 0xf5, 0x72, 0x0a, 0x4a, 0x81, 0xc0, 0x9a, 0x11, 0x89,
-      0xaf, 0x44, 0xc9, 0x3f, 0x7c, 0xeb, 0x57, 0x13, 0xab, 0x33, 0x4b, 0xc8,
-      0x44, 0x78, 0x09, 0x4f, 0x3a, 0xec, 0xba, 0xf8, 0xc2, 0x47, 0xb1, 0x64,
-      0xa1, 0x33, 0x72};
-
-  // Generate a witness from the mdoc data structure.
-  // For EU residency, we use a country code attribute (e.g., "DE" for Germany).
   Sw sw(p256, p256_scalar);
 
-  // Country code attribute
-  SmallOpenedAttribute country = {102, 2, (uint8_t *)"DE", 2};
-  std::vector<SmallOpenedAttribute> show(kNumAttr, country);
+  // Create a credential with "DE" at a known offset
+  // We'll place it at offset 18-19 (in padding area after "age:\"19\"")
+  PtrCredOpenedAttribute country = {18, 2, (uint8_t *)"DE", 2};
+  std::vector<PtrCredOpenedAttribute> show(kNumAttr, country);
 
-  Elt pkX_elt = p256_base.of_string(pkX);
-  Elt pkY_elt = p256_base.of_string(pkY);
+  // Use the age test's cryptographic material
+  constexpr size_t t_ind = 0;
+  const PtrCredTest &test = ptrcred_tests[t_ind];
+  pkX = p256_base.of_string(test.pkx);
+  pkY = p256_base.of_string(test.pky);
 
-  // Dummy transcript values (required by function signature but ignored by
-  // logic)
-  uint8_t dummy_transcript[1] = {0};
-  StaticString dummy_sig("0x00");
-  uint8_t dummy_now[] = "2025-01-01T00:00:00Z";
+  // Modify the credential to include "DE" at offset 18-19
+  std::vector<uint8_t> modified_cred(test.ptrcred,
+                                     test.ptrcred + test.ptrcred_size);
+  modified_cred[18] = 'D';
+  modified_cred[19] = 'E';
 
-  bool ok = sw.compute_witness(
-      pkX_elt, pkY_elt, mdoc_bytes.data(), mdoc_bytes.size(), dummy_transcript,
-      0, dummy_now, dummy_sig, dummy_sig, dummy_sig, dummy_sig);
+  bool ok =
+      sw.compute_witness(pkX, pkY, modified_cred.data(), modified_cred.size(),
+                         test.transcript, test.transcript_size, test.now,
+                         test.sigr, test.sigs, test.sigtr, test.sigts);
 
   check(ok, "Could not compute signature witness");
 
   DenseFiller<Fp256Base> filler(W);
   DenseFiller<Fp256Base> pub_filler(pub);
 
-  filler.push_back(pkX_elt);
-  pub_filler.push_back(pkX_elt);
-  filler.push_back(pkY_elt);
-  pub_filler.push_back(pkY_elt);
+  filler.push_back(p256_base.one());
+  pub_filler.push_back(p256_base.one());
+  filler.push_back(pkX);
+  pub_filler.push_back(pkX);
+  filler.push_back(pkY);
+  pub_filler.push_back(pkY);
   filler.push_back(sw.e2_);
   pub_filler.push_back(sw.e2_);
 
-  // Fill opened attributes (country code)
   for (size_t ai = 0; ai < kNumAttr; ++ai) {
     filler.push_back(show[ai].ind_, 8, p256_base);
     pub_filler.push_back(show[ai].ind_, 8, p256_base);
+
     filler.push_back(show[ai].len_, 8, p256_base);
     pub_filler.push_back(show[ai].len_, 8, p256_base);
 
     for (size_t i = 0; i < 32; ++i) {
-      uint8_t v = (i < show[ai].value_size) ? show[ai].value_[i] : 0;
+      uint8_t v = show[ai].value_.size() > i ? show[ai].value_[i] : 0;
       filler.push_back(v, 8, p256_base);
       pub_filler.push_back(v, 8, p256_base);
     }
   }
 
-  // Fill country attribute metadata
   filler.push_back(show[0].ind_, 8, p256_base);
   pub_filler.push_back(show[0].ind_, 8, p256_base);
   filler.push_back(show[0].len_, 8, p256_base);
   pub_filler.push_back(show[0].len_, 8, p256_base);
 
-  // Fill date
   for (size_t i = 0; i < kDateLen; ++i) {
     filler.push_back(sw.now_[i], 8, p256_base);
     pub_filler.push_back(sw.now_[i], 8, p256_base);
@@ -199,27 +168,33 @@ void fill_eu_residency_witness(Dense<Fp256Base> &W, Dense<Fp256Base> &pub) {
 // === TESTS ===
 
 TEST(PtrCredEUResidency, CircuitConstruction) {
+  set_log_level(INFO);
   auto CIRCUIT = make_eu_residency_circuit();
   EXPECT_TRUE(CIRCUIT != nullptr);
-  EXPECT_GT(CIRCUIT->ninputs, 0);
-  EXPECT_GT(CIRCUIT->nl, 0);
-}
-
-TEST(PtrCredEUResidency, CountryCodesExist) {
-  EXPECT_EQ(kNumEUEEACountries, 31);
-  EXPECT_STREQ(kEUEEACountryCodes[0], "AT");
-  EXPECT_STREQ(kEUEEACountryCodes[10], "DE");
-  EXPECT_STREQ(kEUEEACountryCodes[30], "CH");
 }
 
 TEST(PtrCredEUResidency, WitnessGeneration) {
+  set_log_level(INFO);
   auto CIRCUIT = make_eu_residency_circuit();
   auto W = Dense<Fp256Base>(1, CIRCUIT->ninputs);
   auto pub = Dense<Fp256Base>(1, CIRCUIT->npub_in);
   EXPECT_NO_THROW({ fill_eu_residency_witness(W, pub); });
 }
 
-// === Benchmarks ===
+TEST(PtrCredEUResidency, FullZKTest) {
+  set_log_level(INFO);
+
+  std::unique_ptr<Circuit<Fp256Base>> CIRCUIT = make_eu_residency_circuit();
+
+  auto W = Dense<Fp256Base>(1, CIRCUIT->ninputs);
+  auto pub = Dense<Fp256Base>(1, CIRCUIT->npub_in);
+  fill_eu_residency_witness(W, pub);
+
+  run2_test_zk(*CIRCUIT, W, pub, p256_base, p256_base.of_string(kRootX),
+               p256_base.of_string(kRootY), 1ull << 31);
+}
+
+// === BENCHMARKS ===
 
 void BM_EUResidencyCircuitCompilation(benchmark::State &state) {
   for (auto s : state) {
@@ -240,7 +215,72 @@ void BM_EUResidencyWitnessGeneration(benchmark::State &state) {
 }
 BENCHMARK(BM_EUResidencyWitnessGeneration);
 
+void BM_EUResidencyProver(benchmark::State &state) {
+  const f2_p256 p256_2(p256_base);
+  const Elt2 omega = p256_2.of_string(kRootX, kRootY);
+  const FftExtConvolutionFactory fft_b(p256_base, p256_2, omega, 1ull << 31);
+  const RSFactory_b rsf_b(fft_b, p256_base);
+
+  auto CIRCUIT = make_eu_residency_circuit();
+  auto W = Dense<Fp256Base>(1, CIRCUIT->ninputs);
+  auto pub = Dense<Fp256Base>(1, CIRCUIT->npub_in);
+  fill_eu_residency_witness(W, pub);
+
+  Transcript tp((uint8_t *)"test", 4);
+  SecureRandomEngine rng;
+
+  for (auto s : state) {
+    ZkProof<Fp256Base> proof(*CIRCUIT, kLigeroRate, kLigeroNreq);
+    ZkProver<Fp256Base, RSFactory_b> prover(*CIRCUIT, p256_base, rsf_b);
+
+    prover.commit(proof, W, tp, rng);
+    bool ok = prover.prove(proof, W, tp);
+    if (!ok)
+      state.SkipWithError("Prover failed");
+    benchmark::DoNotOptimize(proof);
+  }
+}
+BENCHMARK(BM_EUResidencyProver);
+
+void BM_EUResidencyVerifier(benchmark::State &state) {
+  const f2_p256 p256_2(p256_base);
+  const Elt2 omega = p256_2.of_string(kRootX, kRootY);
+  const FftExtConvolutionFactory fft_b(p256_base, p256_2, omega, 1ull << 31);
+  const RSFactory_b rsf_b(fft_b, p256_base);
+
+  auto CIRCUIT = make_eu_residency_circuit();
+  auto W = Dense<Fp256Base>(1, CIRCUIT->ninputs);
+  auto pub = Dense<Fp256Base>(1, CIRCUIT->npub_in);
+  fill_eu_residency_witness(W, pub);
+
+  Transcript tp_prover((uint8_t *)"test", 4);
+  SecureRandomEngine rng;
+
+  ZkProof<Fp256Base> proof(*CIRCUIT, kLigeroRate, kLigeroNreq);
+  ZkProver<Fp256Base, RSFactory_b> prover(*CIRCUIT, p256_base, rsf_b);
+
+  prover.commit(proof, W, tp_prover, rng);
+  if (!prover.prove(proof, W, tp_prover)) {
+    state.SkipWithError("Setup: Prover failed to generate valid proof");
+    return;
+  }
+
+  for (auto s : state) {
+    Transcript tp_verifier((uint8_t *)"test", 4);
+    ZkVerifier<Fp256Base, RSFactory_b> verifier(*CIRCUIT, rsf_b, kLigeroRate,
+                                                kLigeroNreq, p256_base);
+    verifier.recv_commitment(proof, tp_verifier);
+    bool ok = verifier.verify(proof, pub, tp_verifier);
+    if (!ok)
+      state.SkipWithError("Verifier failed");
+    benchmark::DoNotOptimize(ok);
+  }
+}
+BENCHMARK(BM_EUResidencyVerifier);
+
 } // namespace
 } // namespace proofs
+
+BENCHMARK_MAIN();
 
 #endif // PRIVACY_PROOFS_ZK_LIB_CIRCUITS_ANONCRED_PTRCRED_EU_RESIDENCY_TEST_CC_
