@@ -43,4 +43,4 @@ echo ">> Gender & Student"
 ./lib/circuits/mdoc/student_card_bench
 
 echo ">> European Residency (AnonCreds)"
-./lib/circuits/anoncred/ptrcred_eu_residency_test
+./lib/circuits/anoncred/ptrcred_eu_residency_test --benchmark_filter=EUResidency
