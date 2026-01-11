@@ -6,14 +6,14 @@ rm -rf build
 mkdir build
 cd build
 
-echo "Configuring with CMake (inside nix-shell)..."
-nix-shell ../shell.nix --run "cmake .. -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release -DBENCHMARK_ENABLE_WERROR=OFF"
+echo "Configuring with CMake"
+cmake .. -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release -DBENCHMARK_ENABLE_WERROR=OFF
 
-echo "Building EVERYTHING (inside nix-shell)..."
-nix-shell ../shell.nix --run "ninja mdoc_signature_test mdoc_1f_test mdoc_zk_test \
+echo "Building EVERYTHING"
+ninja mdoc_signature_test mdoc_1f_test mdoc_zk_test \
       mdoc_benchmark smart_age_test age_over_18_benchmark \
       french_license_test sex_test student_card_test student_card_bench \
-      ptrcred_age_over_18_test ptrcred_eu_residency_test"
+      ptrcred_age_over_18_test ptrcred_eu_residency_test
 
 echo ">> Smart Age & License"
 
