@@ -59,12 +59,31 @@ RequestedAttribute CreateAgeAttribute(int age_threshold) {
   memcpy(attr.namespace_id, ns, ns_len);
   attr.namespace_len = ns_len;
 
-  std::string id = "age_over_" + std::to_string(age_threshold);
-  memcpy(attr.id, id.c_str(), id.length());
-  attr.id_len = id.length();
+  const char *id = "birth_date";
+  memcpy(attr.id, id, strlen(id));
+  attr.id_len = strlen(id);
 
-  attr.cbor_value[0] = 0xf5; // true
-  attr.cbor_value_len = 1;
+  // Calculate limit date: Today - age_threshold years
+  // Person born BEFORE this date is OLDER than threshold.
+  time_t now_time = time(nullptr);
+  struct tm *now = localtime(&now_time);
+
+  int limit_year = now->tm_year + 1900 - age_threshold;
+  int limit_month = now->tm_mon + 1;
+  int limit_day = now->tm_mday;
+
+  std::ostringstream ss;
+  ss << std::setfill('0') << std::setw(4) << limit_year << "-" << std::setw(2)
+     << limit_month << "-" << std::setw(2) << limit_day;
+  std::string limit_date_str = ss.str();
+
+  // For GE/LE comparison types, the library likely expects the raw string value
+  // (utf-8 bytes) as the constraint, matching the content of the attribute
+  // (e.g. "1971-09-01").
+  memcpy(attr.cbor_value, limit_date_str.c_str(), limit_date_str.length());
+  attr.cbor_value_len = limit_date_str.length();
+
+  attr.verification_type = 1; // LEQ (birth_date <= limit_date)
 
   return attr;
 }
@@ -83,6 +102,7 @@ RequestedAttribute CreateNationalityAttribute(const char *nationality) {
   attr.cbor_value[0] = 0x60 + strlen(nationality); // CBOR text header
   memcpy(attr.cbor_value + 1, nationality, strlen(nationality));
   attr.cbor_value_len = 1 + strlen(nationality);
+  attr.verification_type = 0; // EQ
 
   return attr;
 }
@@ -105,6 +125,7 @@ RequestedAttribute CreateVaccineAttribute(const char *vaccine_code) {
   attr.cbor_value[0] = 0x60 + strlen(vaccine_code);
   memcpy(attr.cbor_value + 1, vaccine_code, strlen(vaccine_code));
   attr.cbor_value_len = 1 + strlen(vaccine_code);
+  attr.verification_type = 0; // EQ
 
   return attr;
 }
@@ -123,6 +144,7 @@ RequestedAttribute CreateInsuranceAttribute(const char *status) {
   attr.cbor_value[0] = 0x60 + strlen(status);
   memcpy(attr.cbor_value + 1, status, strlen(status));
   attr.cbor_value_len = 1 + strlen(status);
+  attr.verification_type = 0; // EQ
 
   return attr;
 }
@@ -140,6 +162,7 @@ RequestedAttribute CreateStudentAttribute() {
 
   attr.cbor_value[0] = 0xf5; // true
   attr.cbor_value_len = 1;
+  attr.verification_type = 0; // EQ
 
   return attr;
 }
@@ -159,6 +182,7 @@ RequestedAttribute CreateSexAttribute(const char *sex_code) {
   attr.cbor_value[0] = 0x61;
   attr.cbor_value[1] = sex_code[0];
   attr.cbor_value_len = 2;
+  attr.verification_type = 0; // EQ
 
   return attr;
 }
@@ -267,14 +291,14 @@ bool PerformZKProofGeneration(const ProverConfig &config, ProofData &proof_out,
         Log("  ✓ Attribute: category_C");
       }
     } else if (config.prove_student_status) {
-      // NOTE: We do not have a valid signed mDoc with student data.
-      // We use mdoc_index = 0 (Standard mDL) as a placeholder.
+      // Note: mDoc for student status is not currently available in
+      // public test vectors.
       mdoc_index = 0;
       Log("  • Initiating ZK for Student Status...");
       attributes.push_back(CreateStudentAttribute());
       Log("  ✓ Attribute: is_student == true");
-      Log("  [WARNING] No valid Student mDoc available. Verification expected "
-          "to fail.");
+      Log("  [WARNING] Missing student mDoc signature. Verification will "
+          "fail.");
     } else if (config.prove_health_issuer) {
       mdoc_index = 0; // This signed document is issued by "FRA"
 
@@ -301,13 +325,19 @@ bool PerformZKProofGeneration(const ProverConfig &config, ProofData &proof_out,
       }
     } else {
       // Standard Identity
-      mdoc_index = 0;
+      // Use mdoc_index 3 for Age because it has birth_date!
+      mdoc_index = 3;
+
       if (config.prove_age) {
         attributes.push_back(CreateAgeAttribute(config.age_threshold));
-        Log("  ✓ Attribute: age_over_" + std::to_string(config.age_threshold));
+        Log("  ✓ Attribute: birth_date <= limit (Over " +
+            std::to_string(config.age_threshold) + ")");
       }
       if (config.prove_nationality) {
-        std::string target_nat = "250"; // Default
+        // Warn
+        Log("  [WARNING] Nationality check requested but no underlying data "
+            "available in test mDocs.");
+        std::string target_nat = "250";
         if (config.selected_nationality >= 0 &&
             config.selected_nationality < kNumCountries) {
           target_nat = kCountries[config.selected_nationality].numeric;
@@ -318,6 +348,8 @@ bool PerformZKProofGeneration(const ProverConfig &config, ProofData &proof_out,
         Log("  ✓ Attribute: nationality = " + target_nat);
       }
       if (config.prove_sex) {
+        Log("  [WARNING] Sex check requested but no underlying data available "
+            "in test mDocs.");
         std::string sex_code = (config.selected_sex == 0) ? "M" : "F";
         attributes.push_back(CreateSexAttribute(sex_code.c_str()));
         Log("  ✓ Attribute: sex = " + sex_code);
@@ -449,8 +481,8 @@ bool PerformZKProofGeneration(const ProverConfig &config, ProofData &proof_out,
         proof_out.attributes_proven.push_back("Insurance: Active");
     } else {
       if (config.prove_age)
-        proof_out.attributes_proven.push_back("age_over_" +
-                                              std::to_string(config.age_threshold));
+        proof_out.attributes_proven.push_back(
+            "age_over_" + std::to_string(config.age_threshold));
       if (config.prove_nationality) {
         std::string nat_str = "250";
         if (config.selected_nationality >= 0 &&

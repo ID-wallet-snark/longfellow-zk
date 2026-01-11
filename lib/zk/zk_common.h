@@ -45,13 +45,13 @@ class ZkCommon {
   using WPoly = typename LayerProof<Field>::WPoly;
   using FWPoly = typename LayerProof<Field>::FWPoly;
 
- public:
+public:
   // pi: witness index for first pad element in a larger commitment
-  static size_t verifier_constraints(
-      const Circuit<Field>& circuit, const Dense<Field>& pub,
-      const Proof<Field>& proof, const ProofAux<Field>* aux,
-      std::vector<Llc>& a, std::vector<typename Field::Elt>& b, Transcript& tsv,
-      size_t pi, const Field& F) {
+  static size_t
+  verifier_constraints(const Circuit<Field> &circuit, const Dense<Field> &pub,
+                       const Proof<Field> &proof, const ProofAux<Field> *aux,
+                       std::vector<Llc> &a, std::vector<typename Field::Elt> &b,
+                       Transcript &tsv, size_t pi, const Field &F) {
     const size_t ninp = circuit.ninputs, npub = circuit.npub_in;
 
     Challenge<Field> ch(circuit.nl);
@@ -65,7 +65,7 @@ class ZkCommon {
         .g = {ch.g, ch.g},
     };
 
-    size_t ci = 0;  // Index of the next Ligero constraint.
+    size_t ci = 0; // Index of the next Ligero constraint.
 
     const typename FWPoly::dot_interpolation dot_wpoly(F);
 
@@ -84,7 +84,7 @@ class ZkCommon {
       check(clr->logw > 0, "clr->logw > 0");
 
       PadLayout pl(clr->logw);
-      ConstraintBuilder cb(pl, F);  // representing 0
+      ConstraintBuilder cb(pl, F); // representing 0
 
       cb.first(challenge->alpha, cla.claim);
       // now cb contains claim_{-1} from the previous layer
@@ -92,7 +92,7 @@ class ZkCommon {
       for (size_t round = 0; round < clr->logw; ++round) {
         for (size_t hand = 0; hand < 2; ++hand) {
           size_t r = 2 * round + hand;
-          const WPoly& hp = plr->hp[hand][round];
+          const WPoly &hp = plr->hp[hand][round];
           challenge->hb[hand][round] = tss.round(hp);
           const FWPoly lag = dot_wpoly.coef(challenge->hb[hand][round], F);
 
@@ -123,8 +123,8 @@ class ZkCommon {
           .g = {challenge->hb[0], challenge->hb[1]},
       };
 
-      pi += pl.layer_size();  // Update index to poly_pad(0,0) of the
-                              // next layer
+      pi += pl.layer_size(); // Update index to poly_pad(0,0) of the
+                             // next layer
     }
 
     // Constraints induced by the input binding
@@ -137,7 +137,7 @@ class ZkCommon {
   }
 
   // Returns the size of the proof pad for circuit C.
-  static size_t pad_size(const Circuit<Field>& C) {
+  static size_t pad_size(const Circuit<Field> &C) {
     size_t sz = 0;
     for (size_t i = 0; i < C.nl; ++i) {
       PadLayout pl(C.l[i].logw);
@@ -147,8 +147,8 @@ class ZkCommon {
   }
 
   // Setup lqc based on proof pad layout.
-  static void setup_lqc(const Circuit<Field>& C,
-                        std::vector<LigeroQuadraticConstraint>& lqc,
+  static void setup_lqc(const Circuit<Field> &C,
+                        std::vector<LigeroQuadraticConstraint> &lqc,
                         size_t start_pad) {
     size_t pi = start_pad;
     for (size_t i = 0; i < C.nl; ++i) {
@@ -161,10 +161,10 @@ class ZkCommon {
   }
 
   // append public parameters to the FS transcript
-  static void initialize_sumcheck_fiat_shamir(Transcript& ts,
-                                              const Circuit<Field>& circuit,
-                                              const Dense<Field>& pub,
-                                              const Field& F) {
+  static void initialize_sumcheck_fiat_shamir(Transcript &ts,
+                                              const Circuit<Field> &circuit,
+                                              const Dense<Field> &pub,
+                                              const Field &F) {
     ts.write(circuit.id, sizeof(circuit.id));
 
     // Public inputs:
@@ -180,21 +180,21 @@ class ZkCommon {
     ts.write0(circuit.nterms());
   }
 
- private:
+private:
   // The claims struct mimics the same object in the sumcheck code. This
   // helps the verifier_constraints method above mimic the same steps as
   // the sumcheck verifier.
   struct Claims {
     size_t logv;
     Elt claim[2];
-    const Elt* q;
-    const Elt* g[2];
+    const Elt *q;
+    const Elt *g[2];
   };
 
   class PadLayout {
     size_t logw_;
 
-   public:
+  public:
     explicit PadLayout(size_t logw) : logw_(logw) {}
 
     // Layout of padding in the expr_.symbolic array.
@@ -228,7 +228,7 @@ class ZkCommon {
       } else if (point == 2) {
         return 2 * r + 1;
       }
-      return 0;  // silence noreturn warning
+      return 0; // silence noreturn warning
     }
     // index of CLAIM_PAD[layer][n]
     size_t claim_pad(size_t n) const { return poly_pad(2 * logw_, 0) + n; }
@@ -256,18 +256,18 @@ class ZkCommon {
   class Expression {
     Elt known_;
     std::vector<Elt> symbolic_;
-    const Field& f_;
+    const Field &f_;
 
-   public:
-    Expression(size_t nvar, const Field& F)
+  public:
+    Expression(size_t nvar, const Field &F)
         : known_(F.zero()), symbolic_(nvar, F.zero()), f_(F) {}
 
     Elt known() { return known_; }
     std::vector<Elt> symbolic() { return symbolic_; }
 
-    void scale(const Elt& k) {
+    void scale(const Elt &k) {
       f_.mul(known_, k);
-      for (auto& e : symbolic_) {
+      for (auto &e : symbolic_) {
         f_.mul(e, k);
       }
     }
@@ -277,13 +277,13 @@ class ZkCommon {
     // below.
 
     // *this += k * (known_value + witness[var]).
-    void axpy(size_t var, const Elt& known_value, const Elt& k) {
+    void axpy(size_t var, const Elt &known_value, const Elt &k) {
       f_.add(known_, f_.mulf(k, known_value));
       f_.add(symbolic_[var], k);
     }
 
     // *this -= k * (known_value + witness[var])
-    void axmy(size_t var, const Elt& known_value, const Elt& k) {
+    void axmy(size_t var, const Elt &known_value, const Elt &k) {
       f_.sub(known_, f_.mulf(k, known_value));
       f_.sub(symbolic_[var], k);
     }
@@ -291,11 +291,11 @@ class ZkCommon {
 
   class ConstraintBuilder {
     Expression expr_;
-    const PadLayout& pl_;
-    const Field& f_;
+    const PadLayout &pl_;
+    const Field &f_;
 
-   public:
-    ConstraintBuilder(const PadLayout& pl, const Field& F)
+  public:
+    ConstraintBuilder(const PadLayout &pl, const Field &F)
         : expr_(pl.ovp_layer_size(), F), pl_(pl), f_(F) {}
 
     // For given unpadded variable X in the original non-ZK prover,
@@ -371,8 +371,8 @@ class ZkCommon {
     //  SUM_{i} SYMBOLIC[i] dX[i] - (EQQ * W[R, C]) dW[L, C]
     //      - (EQQ * W[L, C]) dW[R, C] - EQQ * dW[R,C] * dW[L,C]
     //   = EQQ * W[R,C] * W[L,C] - KNOWN
-    void finalize(const Elt wc[], const Elt& eqq, size_t ci, size_t ly,
-                  size_t pi, std::vector<Llc>& a, std::vector<Elt>& b) {
+    void finalize(const Elt wc[], const Elt &eqq, size_t ci, size_t ly,
+                  size_t pi, std::vector<Llc> &a, std::vector<Elt> &b) {
       // break the Expression abstraction and split into constituents.
 
       // EQQ * W[R,C] * W[L,C] - known
@@ -404,11 +404,11 @@ class ZkCommon {
   // This method explicitly computes the public binding, and then adds the
   // constraints that
   //    binding(witness, R_w) = got - binding(pub_inputs, R_p)
-  static size_t input_constraint(const Claims& cla, const Dense<Field>& pub,
+  static size_t input_constraint(const Claims &cla, const Dense<Field> &pub,
                                  size_t pub_inputs, size_t num_inputs,
                                  size_t pi, Elt got, Elt alpha,
-                                 std::vector<Llc>& a, std::vector<Elt>& b,
-                                 size_t ci, const Field& F) {
+                                 std::vector<Llc> &a, std::vector<Elt> &b,
+                                 size_t ci, const Field &F) {
     Eqs<Field> eq0(cla.logv, num_inputs, cla.g[0], F);
     Eqs<Field> eq1(cla.logv, num_inputs, cla.g[1], F);
     Elt pub_binding = F.zero();
@@ -422,7 +422,7 @@ class ZkCommon {
       }
     }
 
-    // We view the input constraints as being at fake layer
+    // We view the input constraints as being at virtual layer
     // one past the last real layer.  The alternative of
     // considering the input as part of the last real layer
     // yields code that looks even more convoluted.
@@ -439,8 +439,8 @@ class ZkCommon {
     return ++ci;
   }
 
-  static Elt bind_quad(const Layer<Field>* clr, const Claims& cla,
-                       const LayerChallenge<Field>* chal, const Field& F) {
+  static Elt bind_quad(const Layer<Field> *clr, const Claims &cla,
+                       const LayerChallenge<Field> *chal, const Field &F) {
     return clr->quad->bind_gh_all(
         // G
         cla.logv, cla.g[0], cla.g[1], chal->alpha, chal->beta,
@@ -450,6 +450,6 @@ class ZkCommon {
         F);
   }
 };
-}  // namespace proofs
+} // namespace proofs
 
-#endif  // PRIVACY_PROOFS_ZK_LIB_ZK_ZK_COMMON_H_
+#endif // PRIVACY_PROOFS_ZK_LIB_ZK_ZK_COMMON_H_

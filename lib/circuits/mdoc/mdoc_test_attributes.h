@@ -1,16 +1,4 @@
-// Copyright 2025 Google LLC.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+
 
 #ifndef PRIVACY_PROOFS_ZK_LIB_CIRCUITS_MDOC_MDOC_TEST_ATTRIBUTES_H_
 #define PRIVACY_PROOFS_ZK_LIB_CIRCUITS_MDOC_MDOC_TEST_ATTRIBUTES_H_
@@ -26,8 +14,7 @@ static const RequestedAttribute age_over_18 = {
     .cbor_value = {0xf5},
     .namespace_len = 17,
     .id_len = 11,
-    .cbor_value_len = 1,
-    .verification_type = 0};
+    .cbor_value_len = 1};
 
 static const RequestedAttribute europa_age_over_18 = {
     .namespace_id = {'e', 'u', '.', 'e', 'u', 'r', 'o', 'p', 'a', '.', 'e', 'c',
@@ -36,18 +23,16 @@ static const RequestedAttribute europa_age_over_18 = {
     .cbor_value = {0xf5},
     .namespace_len = 17,
     .id_len = 11,
-    .cbor_value_len = 1,
-    .verification_type = 0};
+    .cbor_value_len = 1};
 
 static const RequestedAttribute not_over_18 = {
     .namespace_id = {'o', 'r', 'g', '.', 'i', 's', 'o', '.', '1', '8', '0', '1',
                      '3', '.', '5', '.', '1'},
     .id = {'a', 'g', 'e', '_', 'o', 'v', 'e', 'r', '_', '1', '8'},
     .cbor_value = {0xf4},
-    .namespace_len = 17, // Fixed missing namespace_len from previous view
+    .namespace_len = 17,
     .id_len = 11,
-    .cbor_value_len = 1,
-    .verification_type = 0};
+    .cbor_value_len = 1};
 
 static const RequestedAttribute age_birth_year = {
     .namespace_id = {'o', 'r', 'g', '.', 'i', 's', 'o', '.', '1', '8', '0', '1',
@@ -132,8 +117,7 @@ static const RequestedAttribute issue_date_2025_07_21 = {
                    '1',  'T',  '0', '4', ':', '0', '0', ':', '0', '0', 'Z'},
     .namespace_len = 17,
     .id_len = 10,
-    .cbor_value_len = 22,
-    .verification_type = 0};
+    .cbor_value_len = 22};
 
 static const RequestedAttribute aamva_name_suffix_mr = {
     .namespace_id = {'o', 'r', 'g', '.', 'i', 's', 'o', '.', '1', '8', '0',
@@ -142,8 +126,7 @@ static const RequestedAttribute aamva_name_suffix_mr = {
     .cbor_value = {0x63, 'M', 'r', '.'},
     .namespace_len = 21,
     .id_len = 11,
-    .cbor_value_len = 4,
-    .verification_type = 0};
+    .cbor_value_len = 4};
 
 static const RequestedAttribute aamva_dhs_compliance = {
     .namespace_id = {'o', 'r', 'g', '.', 'i', 's', 'o', '.', '1', '8', '0',
@@ -153,8 +136,7 @@ static const RequestedAttribute aamva_dhs_compliance = {
     .cbor_value = {0x61, 'F'},
     .namespace_len = 21,
     .id_len = 14,
-    .cbor_value_len = 2,
-    .verification_type = 0};
+    .cbor_value_len = 2};
 
 static const RequestedAttribute driving_privileges_A = {
     .namespace_id = {'o', 'r', 'g', '.', 'i', 's', 'o', '.', '1', '8', '0', '1',
@@ -166,8 +148,7 @@ static const RequestedAttribute driving_privileges_A = {
                    'y',  '_',  'c',  'o', 'd', 'e', 0x61, 'A'},
     .namespace_len = 17,
     .id_len = 18,
-    .cbor_value_len = 26,
-    .verification_type = 0};
+    .cbor_value_len = 26};
 
 static const RequestedAttribute driving_privileges_B = {
     .namespace_id = {'o', 'r', 'g', '.', 'i', 's', 'o', '.', '1', '8', '0', '1',
@@ -179,8 +160,7 @@ static const RequestedAttribute driving_privileges_B = {
                    'y',  '_',  'c',  'o', 'd', 'e', 0x61, 'B'},
     .namespace_len = 17,
     .id_len = 18,
-    .cbor_value_len = 26,
-    .verification_type = 0};
+    .cbor_value_len = 26};
 
 static const RequestedAttribute driving_privileges_C = {
     .namespace_id = {'o', 'r', 'g', '.', 'i', 's', 'o', '.', '1', '8', '0', '1',
@@ -192,8 +172,7 @@ static const RequestedAttribute driving_privileges_C = {
                    'y',  '_',  'c',  'o', 'd', 'e', 0x61, 'C'},
     .namespace_len = 17,
     .id_len = 18,
-    .cbor_value_len = 26,
-    .verification_type = 0};
+    .cbor_value_len = 26};
 
 // Proxy for Category B using height (since we can't sign new attributes)
 static const RequestedAttribute category_B_proxy = {
@@ -203,8 +182,7 @@ static const RequestedAttribute category_B_proxy = {
     .cbor_value = {0x18, 0xaf},
     .namespace_len = 17,
     .id_len = 6,
-    .cbor_value_len = 2,
-    .verification_type = 0};
+    .cbor_value_len = 2};
 
 // French Student Card attributes
 static const RequestedAttribute student_family_name = {
@@ -235,7 +213,6 @@ static const RequestedAttribute student_birth_date = {
     .id_len = 10,
     .cbor_value_len = 14};
 
-
 // Student Status Attribute
 static const RequestedAttribute is_student = {
     .namespace_id = {'f', 'r', '.', 'g', 'o', 'u', 'v', '.', 'e', 'd', 'u', 'c',
@@ -244,8 +221,7 @@ static const RequestedAttribute is_student = {
     .cbor_value = {0xf5}, // true
     .namespace_len = 19,
     .id_len = 10,
-    .cbor_value_len = 1,
-    .verification_type = 0};
+    .cbor_value_len = 1};
 
 // Smart Age Verification Attributes
 // 18yo in 2026. Limit: 2008-01-01

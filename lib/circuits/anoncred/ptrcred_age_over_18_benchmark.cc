@@ -26,6 +26,7 @@
 #include "zk/zk_proof.h"
 #include "zk/zk_prover.h"
 #include "zk/zk_testing.h"
+#include "zk/zk_verifier.h"
 
 namespace proofs {
 namespace {
@@ -179,6 +180,48 @@ void BM_AnonCred_Prover(benchmark::State &state) {
   }
 }
 BENCHMARK(BM_AnonCred_Prover);
+
+void BM_AnonCred_Verifier(benchmark::State &state) {
+  std::unique_ptr<Circuit<Fp256Base>> CIRCUIT = make_circuit();
+
+  auto W = Dense<Fp256Base>(1, CIRCUIT->ninputs);
+  auto pub = Dense<Fp256Base>(1, CIRCUIT->npub_in);
+
+  fill_witness(W, pub);
+
+  using f2_p256 = Fp2<Fp256Base>;
+  using Elt2 = f2_p256::Elt;
+  using FftExtConvolutionFactory = FFTExtConvolutionFactory<Fp256Base, f2_p256>;
+  using RSFactory = ReedSolomonFactory<Fp256Base, FftExtConvolutionFactory>;
+
+  static constexpr char kRootX[] =
+      "112649224146410281873500457609690258373018840430489408729223714171582664"
+      "680802";
+  static constexpr char kRootY[] =
+      "840879943585409076957404614278186605601821689971823787493130182544504602"
+      "12908";
+
+  const f2_p256 p256_2(p256_base);
+  const Elt2 omega = p256_2.of_string(kRootX, kRootY);
+  const FftExtConvolutionFactory fft_b(p256_base, p256_2, omega, 1ull << 31);
+  const RSFactory rsf(fft_b, p256_base);
+
+  Transcript tp((uint8_t *)"test", 4);
+  SecureRandomEngine rng;
+  ZkProof<Fp256Base> zkpr(*CIRCUIT, 4, 128);
+  ZkProver<Fp256Base, RSFactory> prover(*CIRCUIT, p256_base, rsf);
+  prover.commit(zkpr, W, tp, rng);
+  prover.prove(zkpr, W, tp);
+
+  for (auto s : state) {
+    Transcript tp_ver((uint8_t *)"test", 4);
+    ZkVerifier<Fp256Base, RSFactory> verifier(*CIRCUIT, rsf, 4, 128, p256_base);
+    verifier.recv_commitment(zkpr, tp_ver);
+    bool ok = verifier.verify(zkpr, pub, tp_ver);
+    benchmark::DoNotOptimize(ok);
+  }
+}
+BENCHMARK(BM_AnonCred_Verifier);
 
 } // namespace
 } // namespace proofs

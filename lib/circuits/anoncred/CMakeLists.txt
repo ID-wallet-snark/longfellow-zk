@@ -57,3 +57,16 @@ target_link_libraries(ptrcred_eu_residency_test
   benchmark
 )
 
+
+# ptrcred_age_over_18_benchmark
+add_executable(ptrcred_age_over_18_benchmark ptrcred_age_over_18_benchmark.cc)
+target_link_libraries(ptrcred_age_over_18_benchmark
+  PRIVATE
+  mdoc
+  algebra
+  ec
+  flatsha
+  util
+  gtest
+  benchmark
+)
