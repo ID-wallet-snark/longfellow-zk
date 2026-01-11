@@ -15,25 +15,12 @@ ninja mdoc_signature_test mdoc_1f_test mdoc_zk_test \
       french_license_test sex_test student_card_test student_card_bench \
       ptrcred_age_over_18_test ptrcred_eu_residency_test
 
-echo "----------------------------------------------------"
-echo "RUNNING ORIGINAL GOOGLE SUITE (Core & AnonCreds)"
-echo "----------------------------------------------------"
-echo ">> Core mDoc Logic"
-# ./lib/circuits/mdoc/mdoc_signature_test
-# ./lib/circuits/mdoc/mdoc_1f_test
-# ./lib/circuits/mdoc/mdoc_zk_test
+echo ">> Smart Age & License"
 
-echo ">> Original Benchmarks"
 ./lib/circuits/mdoc/mdoc_benchmark --benchmark_filter=SmartAge
 ./lib/circuits/mdoc/age_over_18_benchmark
 
-echo ">> Original AnonCreds Tests"
 ./lib/circuits/anoncred/ptrcred_age_over_18_test
-
-echo "----------------------------------------------------"
-echo "RUNNING NEW FEATURES (Europe, Gender, License)"
-echo "----------------------------------------------------"
-echo ">> Smart Age & License"
 ./lib/circuits/mdoc/smart_age_test
 ./lib/circuits/mdoc/french_license_test
 
