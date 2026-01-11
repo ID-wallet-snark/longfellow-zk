@@ -38,30 +38,32 @@ struct ProofData {
   int mdoc_test_index = 0;
 };
 
-// Configuration struct to pass from UI to Logic without passing the whole AppState
+// Configuration struct to pass from UI to Logic without passing the whole
+// AppState
 struct ProverConfig {
-    int birth_year;
-    int birth_month;
-    int birth_day;
-    bool prove_age;
-    bool prove_nationality;
-    bool prove_sex;
-    bool prove_french_license;
-    bool prove_health_issuer;
-    bool prove_vaccine;
-    bool prove_insurance;
-    int selected_issuer;
-    bool eu_vaccines_compliant;
-    bool prove_category_A;
-    bool prove_category_B;
-    bool prove_category_C;
-    int age_threshold;
-    int selected_nationality;
-    int selected_sex;
-    
-    // Cache references (pointers to cache in AppState)
-    // In a full refactor, cache should be managed by the workflow too, 
-    // but we'll keep it simple for now.
+  int birth_year;
+  int birth_month;
+  int birth_day;
+  bool prove_age;
+  bool prove_nationality;
+  bool prove_sex;
+  bool prove_french_license;
+  bool prove_student_status;
+  bool prove_health_issuer;
+  bool prove_vaccine;
+  bool prove_insurance;
+  int selected_issuer;
+  bool eu_vaccines_compliant;
+  bool prove_category_A;
+  bool prove_category_B;
+  bool prove_category_C;
+  int age_threshold;
+  int selected_nationality;
+  int selected_sex;
+
+  // Cache references (pointers to cache in AppState)
+  // In a full refactor, cache should be managed by the workflow too,
+  // but we'll keep it simple for now.
     void* circuit_cache_1attr; 
     void* circuit_cache_2attr;
 };
@@ -84,10 +86,8 @@ bool ExportProof(const ProofData &proof_data, const ProverConfig &config, const 
 
 // Core ZK Operations
 // Returns true if successful, fills proof_out and status_out
-bool PerformZKProofGeneration(const ProverConfig& config, 
-                              ProofData& proof_out, 
-                              std::string& log_out, 
-                              int& calculated_age_out);
+bool PerformZKProofGeneration(const ProverConfig &config, ProofData &proof_out,
+                              std::string &log_out, int &calculated_age_out);
 
 bool PerformZKVerification(const ProofData& proof_data, std::string& log_out);
 

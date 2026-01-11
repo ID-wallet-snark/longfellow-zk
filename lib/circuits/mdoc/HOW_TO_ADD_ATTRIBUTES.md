@@ -1,87 +1,46 @@
-# How to Add New Attributes to the ZK Circuit
+# Adding New Attributes to ZK Circuit
 
-This guide explains how to add and verify a new attribute (e.g., `driving_privileges`) in the Zero-Knowledge Proof system.
+To verify a specific attribute (e.g., `driving_privileges`), the following components are required:
+1.  **Attribute Definition**: Registration in `mdoc_attribute_ids.h`.
+2.  **Signed Data**: An mDL containing the attribute, signed by a trusted issuer.
+3.  **Client Logic**: Request logic implementation in the prover/verifier workflow.
 
-## Prerequisites
-
-To verify a specific attribute, you need:
-1.  **The Attribute Definition**: It must be recognized by the system (in `mdoc_attribute_ids.h`).
-2.  **Signed Data**: An mDL (Mobile Driving License) signed by a valid issuer that *contains* this attribute.
-3.  **A Request**: Code to request this specific attribute during proof generation.
-
-## Step-by-Step Guide
-
-### 1. Define the Attribute (if missing)
-Check `lib/circuits/mdoc/mdoc_attribute_ids.h`. If your attribute isn't listed, add it:
+## 1. Register Attribute
+Ensure the attribute is defined in `lib/circuits/mdoc/mdoc_attribute_ids.h`.
 
 ```cpp
-// lib/circuits/mdoc/mdoc_attribute_ids.h
 constexpr MdocAttribute kMdocAttributes[] = {
-    // ... existing attributes ...
-    {"driving_privileges", kMDLNamespace}, // Already exists!
-    {"my_new_attribute", kMDLNamespace},   // Add yours here
+    // ...
+    {"driving_privileges", kMDLNamespace}, 
+    {"new_attribute", kMDLNamespace}, 
 };
 ```
 
-### 2. Create Signed mDL Data
-> [!IMPORTANT]
-> This is the most critical step. You cannot verify data that hasn't been signed by the issuer.
+## 2. Data Requirements (Critical)
+Verification requires data signed by the issuer's private key. 
 
-You need to generate an mDL structure (CBOR) containing your new attribute and **sign it using the Issuer's Private Key**.
+> [!IMPORTANT]  
+> You cannot simply create arbitrary JSON/CBOR and verify it. The system enforces signature validity.
 
-Example structure for `driving_privileges`:
-```cbor
-{
-  "org.iso.18013.5.1": {
-    "driving_privileges": [
-      {
-        "vehicle_category_code": "B",
-        "issue_date": "2024-01-01",
-        "expiry_date": "2034-01-01"
-      }
-    ]
-  }
-}
-```
+To test a new attribute, you must either:
+*   Have access to the issuer's private key to sign a new mDL structure.
+*   Use an existing mDL that already contains the desired attribute.
 
-*Note: In this codebase, we use pre-signed mock data (`mdoc_examples.h`) because we don't have the private keys to generate new valid signatures.*
+*Note: This repository uses pre-signed mock data (`mdoc_examples.h`) because private keys are not public. We successfully verified the `height` attribute because it was present in our pre-signed test vector.*
 
-### 3. Define the Request in C++
-In your test or application code (e.g., `french_license_test.cc`), define what you want to prove.
+## 3. Implementation
+Define the `RequestedAttribute` struct with the expected CBOR value.
 
-To prove the user has "Permis B" (Category B), you would request the `driving_privileges` attribute and provide the expected CBOR value.
+Example for `driving_privileges` (Category B):
 
 ```cpp
-// Define the expected CBOR value for "Category B"
-// This depends on the exact CBOR encoding of the attribute in the mDL.
 static const RequestedAttribute driving_privileges_B = {
-    .namespace_id = {'o', 'r', 'g', '.', 'i', 's', 'o', '.', '1', '8', '0', '1', '3', '.', '5', '.', '1'},
-    .id = {'d', 'r', 'i', 'v', 'i', 'n', 'g', '_', 'p', 'r', 'i', 'v', 'i', 'l', 'e', 'g', 'e', 's'},
-    // The CBOR bytes for the expected value (e.g., array containing map with category "B")
-    .cbor_value = { ... bytes representing Category B ... }, 
-    .namespace_len = 17,
-    .id_len = 18,
-    .cbor_value_len = ... // length of cbor_value
+    .namespace_id = { ... }, // org.iso.18013.5.1
+    .id = {'d', 'r', 'i', 'v', 'i', 'n', 'g', ...},
+    // Exact CBOR bytes matching the signed mDL content
+    .cbor_value = { ... }, 
+    .verification_type = 0 // Equality check
 };
 ```
 
-### 4. Run the Proof
-Pass this new `RequestedAttribute` to the prover and verifier:
-
-```cpp
-RequestedAttribute attributes[] = {
-    driving_privileges_B
-};
-
-// Run Prover
-run_mdoc_prover(..., attributes, 1, ...);
-
-// Run Verifier
-run_mdoc_verifier(..., attributes, 1, ...);
-```
-
-## Why we used `height` instead
-Since we cannot perform **Step 2** (Generate Signed Data), we had to use an attribute that *already exists* in the signed mock data (`height`) to demonstrate the verification flow. The cryptographic process (Selective Disclosure) is identical.
-
-### Why can't we sign new data?
-The `mdoc_examples.h` file contains **Public Keys** (`kIssuerPKX`, `kIssuerPKY`) used to *verify* signatures, but the corresponding **Private Keys** required to *create* signatures are not included in this open-source repository for security and privacy reasons. Without these private keys, any new data we generate would fail the signature verification step.
+Pass this to `run_mdoc_prover` and `run_mdoc_verifier`. The prover will generate a ZK proof that the signed mDL contains this specific attribute value without revealing the full document signature.

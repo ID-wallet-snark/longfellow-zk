@@ -9,4 +9,4 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_subdirectory(lib)
 
 # Build the GUI application
-# add_subdirectory(gui)
+add_subdirectory(gui)

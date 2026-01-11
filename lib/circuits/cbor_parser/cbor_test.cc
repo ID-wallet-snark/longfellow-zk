@@ -43,7 +43,6 @@ using EvalBackend = EvaluationBackend<Field>;
 using Logic = Logic<Field, EvalBackend>;
 using CounterL = Counter<Logic>;
 
-
 // encoder of input bytes
 static inline uint8_t X(uint8_t type, uint8_t count) {
   return (type << 5) | count;
@@ -70,7 +69,7 @@ const struct {
     {'o'},
 
     // a long string
-    {X(2, 24), 5},  // header + next byte + string
+    {X(2, 24), 5}, // header + next byte + string
     {/*length of the string*/ 3},
     {0xff},
     {25},
@@ -80,7 +79,7 @@ const struct {
     {X(0, 22), 1},
 
     // a long string
-    {X(2, 24), 6},  // header + next byte + string
+    {X(2, 24), 6}, // header + next byte + string
     {/*length of the string*/ 4},
     {'q'},
     {'u'},
@@ -157,7 +156,8 @@ TEST(CBOR, VerifyParseSize) {
     CBORC.decode_and_assert_decode_and_parse(n, dsC.data(), psC.data(),
                                              inC.data(), pwC.data(), gwC);
 
-    // Fake parser output, otherwise the compiler eliminates important wires.
+    // Simulated parser output, otherwise the compiler eliminates important
+    // wires.
     constexpr size_t kNCounters = CborC::kNCounters;
     size_t nout = 0;
     for (size_t j = 0; j < n; ++j) {
@@ -170,5 +170,5 @@ TEST(CBOR, VerifyParseSize) {
     dump_info<Field>("decode_and_assert_decode_and_parse", n, Q);
   }
 }
-}  // namespace
-}  // namespace proofs
+} // namespace
+} // namespace proofs
